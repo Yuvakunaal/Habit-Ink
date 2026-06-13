@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -37,30 +37,33 @@ const HABIT_COLORS = [
   "#6B3A8C","#1A6B6B","#C04A1A","#3A7A8C",
 ];
 
-const HABIT_TYPES: { key: HabitType; label: string }[] = [
-  { key: "yesno", label: "Yes / No" },
-  { key: "number", label: "Number" },
-  { key: "time", label: "Time" },
-  { key: "custom", label: "Custom" },
+const HABIT_TYPES: { key: HabitType; label: string; icon: string }[] = [
+  { key: "yesno", label: "Yes / No", icon: "check-circle" },
+  { key: "number", label: "Number", icon: "hash" },
+  { key: "time", label: "Time", icon: "clock" },
+  { key: "custom", label: "Custom", icon: "edit" },
 ];
 
 const SCHEDULES: { key: ScheduleType; label: string }[] = [
-  { key: "daily", label: "Every Day" },
+  { key: "daily", label: "Daily" },
   { key: "weekdays", label: "Weekdays" },
   { key: "weekends", label: "Weekends" },
   { key: "alternate", label: "Alternate" },
-  { key: "custom", label: "Custom Days" },
+  { key: "custom", label: "Custom" },
 ];
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const DAY_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const SCHEDULE_DESCRIPTIONS: Record<ScheduleType, string> = {
   daily: "Every day",
   weekdays: "Mon – Fri",
-  weekends: "Sat – Sun",
+  weekends: "Sat & Sun",
   alternate: "Every other day",
   custom: "Custom days",
 };
+
+// ─── Add / Edit Modal ────────────────────────────────────────────────────────
 
 interface AddModalProps {
   visible: boolean;
@@ -74,31 +77,35 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
   const { addHabit, updateHabit } = useHabits();
   const today = toDateKey(new Date());
 
-  const [name, setName] = useState(editing?.name ?? "");
-  const [type, setType] = useState<HabitType>(editing?.type ?? "yesno");
-  const [target, setTarget] = useState(editing?.target ?? "");
-  const [schedule, setSchedule] = useState<ScheduleType>(editing?.schedule ?? "daily");
-  const [customDays, setCustomDays] = useState<number[]>(editing?.customDays ?? [1, 3, 5]);
-  const [emoji, setEmoji] = useState(editing?.emoji ?? "✅");
-  const [color, setColor] = useState(editing?.color ?? "#2B3A8C");
+  const [name, setName] = useState("");
+  const [type, setType] = useState<HabitType>("yesno");
+  const [target, setTarget] = useState("");
+  const [schedule, setSchedule] = useState<ScheduleType>("daily");
+  const [customDays, setCustomDays] = useState<number[]>([1, 3, 5]);
+  const [emoji, setEmoji] = useState("✅");
+  const [color, setColor] = useState("#2B3A8C");
 
-  const reset = () => {
-    setName("");
-    setType("yesno");
-    setTarget("");
-    setSchedule("daily");
-    setCustomDays([1, 3, 5]);
-    setEmoji("✅");
-    setColor("#2B3A8C");
-  };
+  // KEY FIX: re-populate form every time modal opens or editing changes
+  useEffect(() => {
+    if (visible) {
+      setName(editing?.name ?? "");
+      setType(editing?.type ?? "yesno");
+      setTarget(editing?.target ?? "");
+      setSchedule(editing?.schedule ?? "daily");
+      setCustomDays(editing?.customDays ?? [1, 3, 5]);
+      setEmoji(editing?.emoji ?? "✅");
+      setColor(editing?.color ?? "#2B3A8C");
+    }
+  }, [visible, editing]);
+
+  const canSave = name.trim().length > 0;
 
   const save = () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!canSave) return;
     const habit = {
-      name: trimmed,
+      name: name.trim(),
       type,
-      target: target.trim() || (type === "yesno" ? "Yes" : target.trim()),
+      target: target.trim() || (type === "yesno" ? "Yes" : ""),
       schedule,
       customDays: schedule === "custom" ? customDays : undefined,
       startDate: editing?.startDate ?? today,
@@ -110,7 +117,6 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
     } else {
       addHabit(habit);
     }
-    reset();
     onClose();
   };
 
@@ -119,14 +125,17 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     );
 
-  const placeholder =
-    type === "yesno"
-      ? "e.g. Yes / No"
-      : type === "number"
-      ? "e.g. 10 000 steps"
-      : type === "time"
-      ? "e.g. 2 hours"
-      : "e.g. 30 pages";
+  const targetPlaceholder =
+    type === "yesno" ? "e.g. Yes / No" :
+    type === "number" ? "e.g. 10 000 steps" :
+    type === "time" ? "e.g. 2 hours" :
+    "e.g. 30 pages";
+
+  const bg = colors.background;
+  const card = colors.card;
+  const border = colors.border;
+  const labelColor = colors.primary;
+  const muted = colors.mutedForeground;
 
   return (
     <Modal
@@ -136,214 +145,201 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        style={[styles.modalRoot, { backgroundColor: colors.background }]}
+        style={{ flex: 1, backgroundColor: bg }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
-          contentContainerStyle={styles.modalScroll}
+          contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <View style={styles.modalTitleRow}>
-              <View style={[styles.modalEmoji, { backgroundColor: color + "22", borderColor: color }]}>
+          {/* ── Header ── */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: color + "25",
+                borderWidth: 2, borderColor: color,
+                alignItems: "center", justifyContent: "center",
+              }}>
                 <Text style={{ fontSize: 28 }}>{emoji}</Text>
               </View>
-              <Text style={[styles.modalTitle, { color: colors.primary, fontFamily: font.heading, fontSize: font.size(24) }]}>
-                {editing ? "Edit Habit" : "New Habit"}
-              </Text>
+              <View>
+                <Text style={{ fontFamily: font.heading, fontSize: font.size(22), color: labelColor }}>
+                  {editing ? "Edit Habit" : "New Habit"}
+                </Text>
+                <Text style={{ fontFamily: font.body, fontSize: font.size(13), color: muted, marginTop: 1 }}>
+                  {editing ? "Update your tracking goal" : "Add to your journal"}
+                </Text>
+              </View>
             </View>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Feather name="x" size={24} color={colors.mutedForeground} />
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }}
+            >
+              <Feather name="x" size={18} color={muted} />
             </Pressable>
           </View>
 
-          <View style={[styles.mRule, { backgroundColor: colors.line }]} />
+          <View style={{ height: 1, backgroundColor: colors.line, marginVertical: 18 }} />
 
-          {/* Emoji picker */}
-          <Text style={[styles.fieldLabel, { color: colors.primary, fontFamily: font.label, fontSize: font.size(14) }]}>
-            Icon
-          </Text>
-          <View style={styles.emojiGrid}>
+          {/* ── Emoji Picker ── */}
+          <SectionLabel label="Choose an icon" font={font} color={labelColor} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
             {EMOJIS.map((e) => (
               <Pressable
                 key={e}
                 onPress={() => setEmoji(e)}
-                style={[
-                  styles.emojiCell,
-                  {
-                    backgroundColor: emoji === e ? color + "22" : colors.muted,
-                    borderColor: emoji === e ? color : colors.border,
-                    borderWidth: emoji === e ? 2 : 1,
-                  },
-                ]}
+                style={{
+                  width: 46, height: 46, borderRadius: 12,
+                  backgroundColor: emoji === e ? color + "20" : colors.muted,
+                  borderWidth: emoji === e ? 2 : 1,
+                  borderColor: emoji === e ? color : border,
+                  alignItems: "center", justifyContent: "center",
+                }}
               >
-                <Text style={{ fontSize: 20 }}>{e}</Text>
+                <Text style={{ fontSize: 22 }}>{e}</Text>
               </Pressable>
             ))}
           </View>
 
-          {/* Color picker */}
-          <Text style={[styles.fieldLabel, { color: colors.primary, fontFamily: font.label, fontSize: font.size(14) }]}>
-            Color
-          </Text>
-          <View style={styles.colorRow}>
+          {/* ── Color Picker ── */}
+          <SectionLabel label="Accent color" font={font} color={labelColor} />
+          <View style={{ flexDirection: "row", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
             {HABIT_COLORS.map((c) => (
               <Pressable
                 key={c}
                 onPress={() => setColor(c)}
-                style={[
-                  styles.colorSwatch,
-                  {
-                    backgroundColor: c,
-                    borderWidth: color === c ? 3 : 2,
-                    borderColor: color === c ? colors.foreground : "transparent",
-                    transform: [{ scale: color === c ? 1.15 : 1 }],
-                  },
-                ]}
+                style={{
+                  width: 38, height: 38, borderRadius: 19,
+                  backgroundColor: c,
+                  alignItems: "center", justifyContent: "center",
+                  borderWidth: color === c ? 3 : 2,
+                  borderColor: color === c ? colors.foreground : "transparent",
+                  transform: [{ scale: color === c ? 1.12 : 1 }],
+                }}
               >
-                {color === c && (
-                  <Feather name="check" size={14} color="#fff" />
-                )}
+                {color === c && <Feather name="check" size={16} color="#fff" />}
               </Pressable>
             ))}
           </View>
 
-          {/* Habit Name */}
-          <Text style={[styles.fieldLabel, { color: colors.primary, fontFamily: font.label, fontSize: font.size(14) }]}>
-            Habit / Goal Name
-          </Text>
+          {/* ── Habit Name ── */}
+          <SectionLabel label="Habit name" font={font} color={labelColor} />
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="What do you want to track?"
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.fieldInput,
-              {
-                fontFamily: font.body,
-                fontSize: font.size(16),
-                color: colors.foreground,
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-              },
-            ]}
+            placeholderTextColor={muted}
+            style={{
+              fontFamily: font.body, fontSize: font.size(16),
+              color: colors.foreground,
+              borderWidth: 1.5,
+              borderColor: name.trim() ? color : border,
+              borderRadius: 10,
+              paddingHorizontal: 14, paddingVertical: 12,
+              backgroundColor: card,
+              marginBottom: 20,
+            }}
             maxLength={80}
+            autoCapitalize="sentences"
           />
 
-          {/* Type */}
-          <Text style={[styles.fieldLabel, { color: colors.primary, fontFamily: font.label, fontSize: font.size(14) }]}>
-            Tracking Type
-          </Text>
-          <View style={styles.chipRow}>
-            {HABIT_TYPES.map((t) => (
-              <Pressable
-                key={t.key}
-                onPress={() => setType(t.key)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: type === t.key ? color : colors.muted,
-                    borderColor: type === t.key ? color : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    {
-                      fontFamily: font.body,
-                      fontSize: font.size(13),
-                      color: type === t.key ? "#fff" : colors.mutedForeground,
-                    },
-                  ]}
+          {/* ── Tracking Type ── */}
+          <SectionLabel label="Tracking type" font={font} color={labelColor} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+            {HABIT_TYPES.map((t) => {
+              const active = type === t.key;
+              return (
+                <Pressable
+                  key={t.key}
+                  onPress={() => setType(t.key)}
+                  style={{
+                    flexDirection: "row", alignItems: "center", gap: 6,
+                    paddingHorizontal: 14, paddingVertical: 9,
+                    borderRadius: 22, borderWidth: 1.5,
+                    backgroundColor: active ? color : card,
+                    borderColor: active ? color : border,
+                  }}
                 >
-                  {t.label}
-                </Text>
-              </Pressable>
-            ))}
+                  <Feather name={t.icon as any} size={13} color={active ? "#fff" : muted} />
+                  <Text style={{
+                    fontFamily: font.body, fontSize: font.size(13),
+                    color: active ? "#fff" : muted,
+                  }}>
+                    {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          {/* Target */}
-          <Text style={[styles.fieldLabel, { color: colors.primary, fontFamily: font.label, fontSize: font.size(14) }]}>
-            Target
-          </Text>
+          {/* ── Target ── */}
+          <SectionLabel label="Target / Goal" font={font} color={labelColor} />
           <TextInput
             value={target}
             onChangeText={setTarget}
-            placeholder={placeholder}
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.fieldInput,
-              {
-                fontFamily: font.body,
-                fontSize: font.size(16),
-                color: colors.foreground,
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-              },
-            ]}
+            placeholder={targetPlaceholder}
+            placeholderTextColor={muted}
+            style={{
+              fontFamily: font.body, fontSize: font.size(16),
+              color: colors.foreground,
+              borderWidth: 1.5, borderColor: border,
+              borderRadius: 10,
+              paddingHorizontal: 14, paddingVertical: 12,
+              backgroundColor: card,
+              marginBottom: 20,
+            }}
           />
 
-          {/* Schedule */}
-          <Text style={[styles.fieldLabel, { color: colors.primary, fontFamily: font.label, fontSize: font.size(14) }]}>
-            Schedule
-          </Text>
-          <View style={styles.chipRow}>
-            {SCHEDULES.map((s) => (
-              <Pressable
-                key={s.key}
-                onPress={() => setSchedule(s.key)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: schedule === s.key ? color : colors.muted,
-                    borderColor: schedule === s.key ? color : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    {
-                      fontFamily: font.body,
-                      fontSize: font.size(13),
-                      color: schedule === s.key ? "#fff" : colors.mutedForeground,
-                    },
-                  ]}
+          {/* ── Schedule ── */}
+          <SectionLabel label="Schedule" font={font} color={labelColor} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: schedule === "custom" ? 12 : 22 }}>
+            {SCHEDULES.map((s) => {
+              const active = schedule === s.key;
+              return (
+                <Pressable
+                  key={s.key}
+                  onPress={() => setSchedule(s.key)}
+                  style={{
+                    paddingHorizontal: 16, paddingVertical: 9,
+                    borderRadius: 22, borderWidth: 1.5,
+                    backgroundColor: active ? color : card,
+                    borderColor: active ? color : border,
+                  }}
                 >
-                  {s.label}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text style={{
+                    fontFamily: font.body, fontSize: font.size(13),
+                    color: active ? "#fff" : muted,
+                  }}>
+                    {s.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Custom day picker */}
           {schedule === "custom" && (
-            <View style={styles.dayPicker}>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 22 }}>
               {DAYS.map((d, i) => (
                 <Pressable
-                  key={d}
+                  key={DAY_FULL[i]}
                   onPress={() => toggleDay(i)}
-                  style={[
-                    styles.dayBtn,
-                    {
-                      backgroundColor: customDays.includes(i) ? color : colors.muted,
-                      borderColor: customDays.includes(i) ? color : colors.border,
-                    },
-                  ]}
+                  style={{
+                    flex: 1, aspectRatio: 1,
+                    borderRadius: 8, alignItems: "center", justifyContent: "center",
+                    backgroundColor: customDays.includes(i) ? color : colors.muted,
+                    borderWidth: 1,
+                    borderColor: customDays.includes(i) ? color : border,
+                  }}
                 >
-                  <Text
-                    style={[
-                      styles.dayText,
-                      {
-                        fontFamily: font.body,
-                        fontSize: font.size(13),
-                        color: customDays.includes(i) ? "#fff" : colors.mutedForeground,
-                      },
-                    ]}
-                  >
+                  <Text style={{
+                    fontFamily: font.body, fontSize: font.size(12),
+                    color: customDays.includes(i) ? "#fff" : muted,
+                    fontWeight: "600",
+                  }}>
                     {d}
                   </Text>
                 </Pressable>
@@ -351,17 +347,29 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
             </View>
           )}
 
-          {/* Save */}
+          {/* ── Save Button ── */}
           <TouchableOpacity
             onPress={save}
-            activeOpacity={0.8}
-            style={[
-              styles.saveBtn,
-              { backgroundColor: color, opacity: name.trim() ? 1 : 0.5 },
-            ]}
-            disabled={!name.trim()}
+            activeOpacity={0.82}
+            disabled={!canSave}
+            style={{
+              backgroundColor: canSave ? color : colors.muted,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: "center",
+              marginTop: 6,
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: 8,
+              opacity: canSave ? 1 : 0.55,
+            }}
           >
-            <Text style={[styles.saveBtnText, { fontFamily: font.label, fontSize: font.size(17), color: "#fff" }]}>
+            <Feather name={editing ? "check" : "plus"} size={18} color={canSave ? "#fff" : muted} />
+            <Text style={{
+              fontFamily: font.label, fontSize: font.size(17),
+              color: canSave ? "#fff" : muted,
+              fontWeight: "700",
+            }}>
               {editing ? "Save Changes" : "Add to Journal"}
             </Text>
           </TouchableOpacity>
@@ -371,7 +379,24 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
   );
 }
 
-// ─── Habit Card ───────────────────────────────────────────────────────────────
+// ─── Section label helper ────────────────────────────────────────────────────
+function SectionLabel({ label, font, color }: { label: string; font: ReturnType<typeof useFont>; color: string }) {
+  return (
+    <Text style={{
+      fontFamily: font.label,
+      fontSize: font.size(12),
+      color,
+      fontWeight: "700",
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+      marginBottom: 10,
+    }}>
+      {label}
+    </Text>
+  );
+}
+
+// ─── Habit Card ──────────────────────────────────────────────────────────────
 function HabitCard({
   habit,
   onEdit,
@@ -387,90 +412,137 @@ function HabitCard({
 
   const streak = getStreak(habit.id);
   const rate = getCompletionRate(habit.id, 30);
+  const accentColor = habit.color ?? "#2B3A8C";
 
   return (
     <Pressable
-      onLongPress={onDelete}
+      onLongPress={() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        onDelete();
+      }}
       onPress={onEdit}
-      style={[
-        styles.card,
+      style={({ pressed }) => [
         {
           backgroundColor: colors.card,
+          borderRadius: 16,
+          borderWidth: 1,
           borderColor: colors.border,
+          marginBottom: 12,
+          overflow: "hidden",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.07,
+          shadowRadius: 6,
+          elevation: 3,
+          opacity: pressed ? 0.93 : 1,
         },
       ]}
     >
-      {/* Left color bar */}
-      <View style={[styles.cardBar, { backgroundColor: habit.color }]} />
+      {/* Top accent bar */}
+      <View style={{ height: 4, backgroundColor: accentColor }} />
 
-      {/* Emoji */}
-      <View style={[styles.cardEmoji, { backgroundColor: habit.color + "15" }]}>
-        <Text style={{ fontSize: 26 }}>{habit.emoji}</Text>
-      </View>
-
-      {/* Content */}
-      <View style={styles.cardBody}>
-        <Text
-          style={{
-            fontFamily: font.label,
-            fontSize: font.size(16),
-            color: colors.foreground,
-            marginBottom: 2,
-          }}
-          numberOfLines={1}
-        >
-          {habit.name}
-        </Text>
-        <Text
-          style={{
-            fontFamily: font.body,
-            fontSize: font.size(13),
-            color: colors.mutedForeground,
-          }}
-        >
-          {SCHEDULE_DESCRIPTIONS[habit.schedule]} · {habit.target || habit.type}
-        </Text>
-
-        {/* Progress bar */}
-        <View style={[styles.progTrack, { backgroundColor: colors.muted, marginTop: 8 }]}>
-          <View
-            style={[
-              styles.progFill,
-              {
-                width: `${rate}%`,
-                backgroundColor:
-                  rate >= 80 ? colors.success : rate >= 50 ? habit.color : colors.accent,
-              },
-            ]}
-          />
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 14 }}>
+        {/* Emoji bubble */}
+        <View style={{
+          width: 52, height: 52, borderRadius: 26,
+          backgroundColor: accentColor + "18",
+          alignItems: "center", justifyContent: "center",
+          borderWidth: 1.5, borderColor: accentColor + "40",
+        }}>
+          <Text style={{ fontSize: 26 }}>{habit.emoji ?? "✅"}</Text>
         </View>
-        <Text style={{ fontFamily: font.body, fontSize: font.size(11), color: colors.mutedForeground, marginTop: 3 }}>
-          {rate}% in last 30 days
-        </Text>
-      </View>
 
-      {/* Right: streak + edit */}
-      <View style={styles.cardRight}>
-        <View style={[styles.streakBadge, { backgroundColor: streak > 0 ? habit.color + "22" : colors.muted }]}>
-          <Text style={{ fontSize: 13 }}>🔥</Text>
+        {/* Main content */}
+        <View style={{ flex: 1 }}>
           <Text
             style={{
               fontFamily: font.heading,
-              fontSize: font.size(14),
-              color: streak > 0 ? habit.color : colors.mutedForeground,
-              marginLeft: 2,
+              fontSize: font.size(18),
+              color: colors.foreground,
+              marginBottom: 2,
             }}
+            numberOfLines={1}
           >
-            {streak}
+            {habit.name}
+          </Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+            {/* Schedule pill */}
+            <View style={{
+              backgroundColor: accentColor + "18",
+              borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
+            }}>
+              <Text style={{
+                fontFamily: font.body, fontSize: font.size(11),
+                color: accentColor, fontWeight: "600",
+              }}>
+                {SCHEDULE_DESCRIPTIONS[habit.schedule]}
+              </Text>
+            </View>
+            {/* Type pill */}
+            {habit.target ? (
+              <View style={{
+                backgroundColor: colors.muted,
+                borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
+              }}>
+                <Text style={{
+                  fontFamily: font.body, fontSize: font.size(11),
+                  color: colors.mutedForeground,
+                }}>
+                  {habit.target}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Progress bar */}
+          <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.muted, overflow: "hidden" }}>
+            <View style={{
+              height: 5, borderRadius: 3,
+              width: `${rate}%`,
+              backgroundColor:
+                rate >= 80 ? colors.success :
+                rate >= 50 ? accentColor :
+                colors.accent,
+            }} />
+          </View>
+          <Text style={{
+            fontFamily: font.body, fontSize: font.size(11),
+            color: colors.mutedForeground, marginTop: 4,
+          }}>
+            {rate}% last 30 days
           </Text>
         </View>
-        <Pressable
-          onPress={onEdit}
-          hitSlop={8}
-          style={[styles.editBtn, { backgroundColor: colors.muted }]}
-        >
-          <Feather name="edit-2" size={13} color={colors.mutedForeground} />
-        </Pressable>
+
+        {/* Right column: streak + edit */}
+        <View style={{ alignItems: "center", gap: 10 }}>
+          <View style={{
+            backgroundColor: streak > 0 ? accentColor + "20" : colors.muted,
+            borderRadius: 12, paddingHorizontal: 8, paddingVertical: 5,
+            alignItems: "center",
+          }}>
+            <Text style={{ fontSize: 14 }}>🔥</Text>
+            <Text style={{
+              fontFamily: font.heading, fontSize: font.size(15),
+              color: streak > 0 ? accentColor : colors.mutedForeground,
+              marginTop: 1,
+            }}>
+              {streak}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={onEdit}
+            hitSlop={6}
+            style={{
+              width: 32, height: 32, borderRadius: 16,
+              backgroundColor: colors.muted,
+              alignItems: "center", justifyContent: "center",
+              borderWidth: 1, borderColor: colors.border,
+            }}
+          >
+            <Feather name="edit-2" size={13} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
       </View>
     </Pressable>
   );
@@ -481,7 +553,7 @@ export default function HabitsScreen() {
   const colors = useColors();
   const font = useFont();
   const insets = useSafeAreaInsets();
-  const { habits, deleteHabit, getStreak, getCompletionRate } = useHabits();
+  const { habits, deleteHabit, getStreak } = useHabits();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Habit | undefined>();
 
@@ -489,14 +561,9 @@ export default function HabitsScreen() {
   const botPad = Platform.OS === "web" ? 34 + 84 : 100;
 
   const confirmDelete = (id: string, name: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert("Remove Habit", `Remove "${name}" from your journal?`, [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: () => deleteHabit(id),
-      },
+      { text: "Remove", style: "destructive", onPress: () => deleteHabit(id) },
     ]);
   };
 
@@ -510,40 +577,61 @@ export default function HabitsScreen() {
     setEditing(undefined);
   };
 
-  // Sort: most streak first
   const sorted = [...habits].sort((a, b) => getStreak(b.id) - getStreak(a.id));
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: colors.line }]}>
-        <View style={styles.titleRow}>
-          <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+      <View style={{
+        paddingTop: topPad + 16,
+        paddingBottom: 16,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.line,
+      }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
           <Text style={{ fontFamily: font.heading, fontSize: font.size(28), color: colors.primary }}>
             My Habits
           </Text>
-          <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
         </View>
-        <Text style={{ fontFamily: font.body, fontSize: font.size(13), color: colors.mutedForeground, textAlign: "center", marginTop: 4 }}>
+        <Text style={{
+          fontFamily: font.body, fontSize: font.size(13),
+          color: colors.mutedForeground, textAlign: "center", marginTop: 4,
+        }}>
           {habits.length === 0
-            ? "Add your first habit below"
-            : `${habits.length} habit${habits.length === 1 ? "" : "s"} · Long-press to remove`}
+            ? "Tap below to add your first habit"
+            : `${habits.length} habit${habits.length === 1 ? "" : "s"} tracked · Long-press to remove`}
         </Text>
       </View>
 
       {/* List */}
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: botPad }]}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: botPad }}
         showsVerticalScrollIndicator={false}
       >
         {habits.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={{ fontSize: 56, marginBottom: 16 }}>📓</Text>
-            <Text style={{ fontFamily: font.heading, fontSize: font.size(22), color: colors.foreground, marginBottom: 8 }}>
+          <View style={{ alignItems: "center", paddingVertical: 80, paddingHorizontal: 32 }}>
+            <View style={{
+              width: 90, height: 90, borderRadius: 45,
+              backgroundColor: colors.muted,
+              alignItems: "center", justifyContent: "center",
+              marginBottom: 20,
+            }}>
+              <Text style={{ fontSize: 44 }}>📓</Text>
+            </View>
+            <Text style={{
+              fontFamily: font.heading, fontSize: font.size(22),
+              color: colors.foreground, marginBottom: 10, textAlign: "center",
+            }}>
               Your journal is empty
             </Text>
-            <Text style={{ fontFamily: font.body, fontSize: font.size(16), color: colors.mutedForeground, textAlign: "center", lineHeight: 24 }}>
-              Tap the button below to add{"\n"}your first habit or goal.
+            <Text style={{
+              fontFamily: font.body, fontSize: font.size(15),
+              color: colors.mutedForeground, textAlign: "center", lineHeight: 24,
+            }}>
+              Start tracking your habits and goals — tap the button below to add your first one.
             </Text>
           </View>
         ) : (
@@ -558,18 +646,33 @@ export default function HabitsScreen() {
         )}
       </ScrollView>
 
-      {/* Add FAB */}
-      <View style={[styles.fabWrap, { bottom: botPad - 60 }]}>
+      {/* FAB */}
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: botPad - 60, alignItems: "center" }}>
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setEditing(undefined);
             setShowAdd(true);
           }}
-          style={[styles.fab, { backgroundColor: colors.primary }]}
+          style={{
+            flexDirection: "row", alignItems: "center",
+            paddingHorizontal: 28, paddingVertical: 15,
+            borderRadius: 50,
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            elevation: 8,
+            gap: 8,
+          }}
         >
-          <Feather name="plus" size={24} color={colors.primaryForeground} />
-          <Text style={{ fontFamily: font.label, fontSize: font.size(16), color: colors.primaryForeground, marginLeft: 8 }}>
+          <Feather name="plus" size={20} color={colors.primaryForeground} />
+          <Text style={{
+            fontFamily: font.label, fontSize: font.size(16),
+            color: colors.primaryForeground, fontWeight: "700",
+          }}>
             Add Habit
           </Text>
         </TouchableOpacity>
@@ -579,144 +682,3 @@ export default function HabitsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center" },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  scroll: { paddingHorizontal: 14, paddingTop: 14, gap: 10 },
-  emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 80, paddingHorizontal: 32 },
-  fabWrap: { position: "absolute", left: 0, right: 0, alignItems: "center" },
-  fab: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 50,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  // Card
-  card: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardBar: { width: 5 },
-  cardEmoji: {
-    width: 58,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardBody: { flex: 1, paddingVertical: 12, paddingRight: 4 },
-  cardRight: {
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  streakBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  editBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  progTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
-  progFill: { height: 4, borderRadius: 2 },
-  // Modal
-  modalRoot: { flex: 1 },
-  modalScroll: { padding: 20, paddingBottom: 40 },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  modalTitleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  modalEmoji: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-  },
-  modalTitle: { fontWeight: "600" },
-  mRule: { height: 1, marginBottom: 20 },
-  fieldLabel: { marginBottom: 8, fontWeight: "600" },
-  fieldInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 18,
-  },
-  emojiGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 18,
-  },
-  emojiCell: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  colorRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 18,
-    flexWrap: "wrap",
-  },
-  colorSwatch: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {},
-  dayPicker: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 },
-  dayBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  dayText: {},
-  saveBtn: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  saveBtnText: { fontWeight: "600" },
-});
