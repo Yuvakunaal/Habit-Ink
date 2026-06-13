@@ -83,7 +83,7 @@ export default function TodayScreen() {
     [dateKey, setEntryStatus]
   );
 
-  const topPad = Platform.OS === "web" ? 67 + insets.top : insets.top;
+  const topPad = insets.top;
   const botPad = Platform.OS === "web" ? 34 + 84 : 100;
 
   return (

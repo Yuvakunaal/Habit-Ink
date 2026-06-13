@@ -284,7 +284,7 @@ export default function GroupsScreen() {
   const { groups } = useHabits();
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
-  const topPad = Platform.OS === "web" ? 67 + insets.top : insets.top;
+  const topPad = insets.top;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

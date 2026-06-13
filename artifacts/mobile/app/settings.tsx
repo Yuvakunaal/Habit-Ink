@@ -49,7 +49,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { theme, fontStyle, fontSize, setTheme, setFontStyle, setFontSize, reset } = useSettings();
 
-  const topPad = Platform.OS === "web" ? 67 + insets.top : insets.top;
+  const topPad = insets.top;
 
   const handleReset = () => {
     Alert.alert("Reset Settings", "Restore all settings to default?", [

@@ -65,7 +65,7 @@ export default function CalendarScreen() {
   const selectedHabits = selected ? getHabitsForDate(selected) : [];
   const selectedCompletion = selected ? getCompletionForDate(selected) : { done: 0, total: 0 };
 
-  const topPad = Platform.OS === "web" ? 67 + insets.top : insets.top;
+  const topPad = insets.top;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>

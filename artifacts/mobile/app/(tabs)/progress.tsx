@@ -70,7 +70,7 @@ export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const { habits, entries, getCompletionForDate } = useHabits();
 
-  const topPad = Platform.OS === "web" ? 67 + insets.top : insets.top;
+  const topPad = insets.top;
   const today = toDateKey(new Date());
   const { done: todayDone, total: todayTotal } = getCompletionForDate(today);
 
