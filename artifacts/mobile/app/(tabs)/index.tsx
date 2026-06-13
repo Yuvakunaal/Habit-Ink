@@ -139,6 +139,39 @@ function CompletionBar({
   );
 }
 
+// ─── Actual Cell (local state so cursor lands at end naturally) ───────────────
+function ActualCell({
+  initialValue,
+  onSave,
+}: {
+  initialValue: string;
+  onSave: (v: string) => void;
+}) {
+  const colors = useColors();
+  const font = useFont();
+  const [value, setValue] = React.useState(initialValue);
+
+  return (
+    <TextInput
+      autoFocus
+      value={value}
+      onChangeText={setValue}
+      onBlur={() => onSave(value)}
+      placeholder="—"
+      placeholderTextColor={colors.mutedForeground}
+      returnKeyType="done"
+      style={{
+        fontFamily: font.body,
+        fontSize: font.size(13),
+        color: colors.foreground,
+        padding: 4,
+        flex: 1,
+        textAlign: "center",
+      }}
+    />
+  );
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function TodayScreen() {
   const colors = useColors();
@@ -473,23 +506,12 @@ export default function TodayScreen() {
                     }
                   >
                     {isEditing ? (
-                      <TextInput
-                        autoFocus
-                        value={entry?.actual ?? ""}
-                        onChangeText={(t) =>
-                          setEntryActual(habit.id, dateKey, t)
-                        }
-                        onBlur={() => setEditingId(null)}
-                        placeholder="Actual..."
-                        placeholderTextColor={colors.mutedForeground}
-                        style={{
-                          fontFamily: font.body,
-                          fontSize: font.size(13),
-                          color: colors.foreground,
-                          padding: 0,
-                          flex: 1,
+                      <ActualCell
+                        initialValue={entry?.actual ?? ""}
+                        onSave={(v) => {
+                          setEntryActual(habit.id, dateKey, v);
+                          setEditingId(null);
                         }}
-                        multiline
                       />
                     ) : (
                       <Text
@@ -499,6 +521,7 @@ export default function TodayScreen() {
                           color: entry?.actual
                             ? colors.foreground
                             : colors.mutedForeground,
+                          textAlign: "center",
                         }}
                         numberOfLines={2}
                       >

@@ -240,7 +240,7 @@ export default function ProgressScreen() {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingBottom: Platform.OS === "web" ? 34 + 84 : 100,
+            paddingBottom: Platform.OS === "web" ? 84 + 32 : insets.bottom + 80,
           },
         ]}
         showsVerticalScrollIndicator={false}

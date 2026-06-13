@@ -33,8 +33,8 @@ function NativeTabLayout() {
         <Label>Progress</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="groups">
-        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
-        <Label>Groups</Label>
+        <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
+        <Label>Profile</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -121,9 +121,9 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="groups"
         options={{
-          title: "Groups",
+          title: "Profile",
           tabBarIcon: ({ color }) => (
-            <Feather name="users" size={22} color={color} />
+            <Feather name="user" size={22} color={color} />
           ),
         }}
       />

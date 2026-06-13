@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,23 +16,54 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Group, ScheduleType, useHabits } from "@/context/HabitContext";
+import { THEMES, ThemeName } from "@/constants/themes";
+import { FontSize, FontStyle, useSettings } from "@/context/SettingsContext";
 import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 
+// ─── Profile avatars ─────────────────────────────────────────────────────────
+const AVATARS = ["😊","🧑","👩","🧔","👨","🧘","🏃","💪","📚","🎯","🌱","✨","🦊","🐻","🦋","🌟"];
+
+// ─── Theme / font constants ───────────────────────────────────────────────────
+const THEME_ORDER: ThemeName[] = ["cream", "midnight", "forest", "rose", "slate"];
+const FONT_OPTIONS: { key: FontStyle; label: string; preview: string }[] = [
+  { key: "handwritten", label: "Handwritten", preview: "Caveat_700Bold" },
+  { key: "clean", label: "Clean", preview: "Inter_600SemiBold" },
+];
+const SIZE_OPTIONS: { key: FontSize; label: string; size: number }[] = [
+  { key: "small", label: "Small", size: 14 },
+  { key: "medium", label: "Medium", size: 17 },
+  { key: "large", label: "Large", size: 21 },
+];
 const SCHEDULES: { key: ScheduleType; label: string }[] = [
   { key: "daily", label: "Every Day" },
   { key: "weekdays", label: "Weekdays" },
   { key: "weekends", label: "Weekends" },
 ];
 
-function CreateGroupModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
+// ─── Section heading ─────────────────────────────────────────────────────────
+function SectionTitle({ label }: { label: string }) {
   const colors = useColors();
+  const font = useFont();
+  return (
+    <Text style={{
+      fontFamily: font.label,
+      fontSize: font.size(11),
+      color: colors.mutedForeground,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      marginBottom: 12,
+      marginTop: 4,
+    }}>
+      {label}
+    </Text>
+  );
+}
+
+// ─── Group modals ─────────────────────────────────────────────────────────────
+function CreateGroupModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const colors = useColors();
+  const font = useFont();
   const { createGroup } = useHabits();
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -45,10 +75,7 @@ function CreateGroupModal({
 
   const addHabit = () => {
     const t = habitInput.trim();
-    if (t && !habitNames.includes(t)) {
-      setHabitNames((p) => [...p, t]);
-      setHabitInput("");
-    }
+    if (t && !habitNames.includes(t)) { setHabitNames((p) => [...p, t]); setHabitInput(""); }
   };
 
   const save = () => {
@@ -57,98 +84,79 @@ function CreateGroupModal({
     const end = new Date();
     end.setDate(end.getDate() + (parseInt(duration) || 30));
     const group = createGroup({
-      name: name.trim(),
-      description: desc.trim(),
-      creatorName: creator.trim(),
-      habitNames,
-      schedule,
+      name: name.trim(), description: desc.trim(), creatorName: creator.trim(),
+      habitNames, schedule,
       startDate: start.toISOString().split("T")[0],
       endDate: end.toISOString().split("T")[0],
-      members: [
-        {
-          id: Date.now().toString(),
-          name: creator.trim(),
-          joinedAt: new Date().toISOString(),
-        },
-      ],
+      members: [{ id: Date.now().toString(), name: creator.trim(), joinedAt: new Date().toISOString() }],
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      "Group Created",
-      `Invite code: ${group.inviteCode}\n\nShare this with friends to join!`,
-      [{ text: "Got it" }]
-    );
+    Alert.alert("Group Created!", `Invite code: ${group.inviteCode}\n\nShare this with friends to join!`, [{ text: "Got it" }]);
     setName(""); setDesc(""); setCreator(""); setHabitNames([]); setHabitInput(""); setDuration("30");
     onClose();
   };
 
+  const inputStyle = {
+    fontFamily: font.body, fontSize: font.size(16), color: colors.foreground,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11, backgroundColor: colors.card, marginBottom: 16,
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={[styles.modalRoot, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.primary }]}>New Challenge</Text>
-            <Pressable onPress={onClose}>
-              <Feather name="x" size={24} color={colors.mutedForeground} />
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <Text style={{ fontFamily: font.heading, fontSize: font.size(24), color: colors.primary }}>New Challenge</Text>
+            <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
-          <View style={[styles.mRule, { backgroundColor: colors.line }]} />
+          <View style={{ height: 1, backgroundColor: colors.line, marginBottom: 20 }} />
 
-          <Text style={[styles.label, { color: colors.primary }]}>Challenge Name</Text>
-          <TextInput value={name} onChangeText={setName} placeholder="e.g. 75-Day Fitness Challenge"
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <SectionTitle label="Challenge name" />
+          <TextInput value={name} onChangeText={setName} placeholder="e.g. 30-Day Reading Challenge" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
 
-          <Text style={[styles.label, { color: colors.primary }]}>Your Name</Text>
-          <TextInput value={creator} onChangeText={setCreator} placeholder="How friends will see you"
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <SectionTitle label="Your name" />
+          <TextInput value={creator} onChangeText={setCreator} placeholder="How friends will see you" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
 
-          <Text style={[styles.label, { color: colors.primary }]}>Description (optional)</Text>
-          <TextInput value={desc} onChangeText={setDesc} placeholder="What's this challenge about?"
-            placeholderTextColor={colors.mutedForeground} multiline
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card, minHeight: 64 }]} />
+          <SectionTitle label="Description (optional)" />
+          <TextInput value={desc} onChangeText={setDesc} placeholder="What's this challenge about?" placeholderTextColor={colors.mutedForeground} multiline style={[inputStyle, { minHeight: 70, textAlignVertical: "top" }]} />
 
-          <Text style={[styles.label, { color: colors.primary }]}>Habits to Track</Text>
-          <View style={styles.habitInputRow}>
-            <TextInput value={habitInput} onChangeText={setHabitInput} placeholder="Add a habit..."
-              placeholderTextColor={colors.mutedForeground} onSubmitEditing={addHabit}
-              style={[styles.habitInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-            <Pressable onPress={addHabit} style={[styles.addBtn, { backgroundColor: colors.primary }]}>
-              <Feather name="plus" size={18} color={colors.primaryForeground} />
+          <SectionTitle label="Habits to track" />
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+            <TextInput value={habitInput} onChangeText={setHabitInput} placeholder="Add a habit..." placeholderTextColor={colors.mutedForeground} onSubmitEditing={addHabit}
+              style={[inputStyle, { flex: 1, marginBottom: 0 }]} />
+            <Pressable onPress={addHabit} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+              <Feather name="plus" size={20} color={colors.primaryForeground} />
             </Pressable>
           </View>
-          {habitNames.map((h, i) => (
-            <View key={i} style={[styles.habitChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-              <Text style={[styles.habitChipText, { color: colors.foreground }]}>{h}</Text>
-              <Pressable onPress={() => setHabitNames((p) => p.filter((_, j) => j !== i))}>
-                <Feather name="x" size={14} color={colors.mutedForeground} />
-              </Pressable>
-            </View>
-          ))}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+            {habitNames.map((h, i) => (
+              <View key={i} style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, gap: 6 }}>
+                <Text style={{ fontFamily: font.body, fontSize: font.size(14), color: colors.foreground }}>{h}</Text>
+                <Pressable onPress={() => setHabitNames((p) => p.filter((_, j) => j !== i))}>
+                  <Feather name="x" size={13} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
 
-          <Text style={[styles.label, { color: colors.primary }]}>Schedule</Text>
-          <View style={styles.chipRow}>
+          <SectionTitle label="Schedule" />
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
             {SCHEDULES.map((s) => (
-              <Pressable key={s.key} onPress={() => setSchedule(s.key)}
-                style={[styles.chip, { backgroundColor: schedule === s.key ? colors.primary : colors.muted, borderColor: schedule === s.key ? colors.primary : colors.border }]}>
-                <Text style={[styles.chipText, { color: schedule === s.key ? colors.primaryForeground : colors.mutedForeground }]}>{s.label}</Text>
+              <Pressable key={s.key} onPress={() => setSchedule(s.key)} style={{ flex: 1, paddingVertical: 10, borderRadius: 22, borderWidth: 1.5, alignItems: "center", backgroundColor: schedule === s.key ? colors.primary : colors.card, borderColor: schedule === s.key ? colors.primary : colors.border }}>
+                <Text style={{ fontFamily: font.body, fontSize: font.size(13), color: schedule === s.key ? "#fff" : colors.mutedForeground }}>{s.label}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.label, { color: colors.primary }]}>Duration (days)</Text>
-          <TextInput value={duration} onChangeText={setDuration} keyboardType="number-pad" placeholder="30"
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <SectionTitle label="Duration (days)" />
+          <TextInput value={duration} onChangeText={setDuration} keyboardType="number-pad" placeholder="30" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
 
-          <TouchableOpacity onPress={save}
-            style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: name.trim() && creator.trim() ? 1 : 0.5 }]}
-            disabled={!name.trim() || !creator.trim()}>
-            <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>Create Challenge</Text>
+          <TouchableOpacity onPress={save} disabled={!name.trim() || !creator.trim()}
+            style={{ backgroundColor: name.trim() && creator.trim() ? colors.primary : colors.muted, borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: name.trim() && creator.trim() ? 1 : 0.55 }}>
+            <Text style={{ fontFamily: font.label, fontSize: font.size(17), color: name.trim() && creator.trim() ? "#fff" : colors.mutedForeground, fontWeight: "700" }}>Create Challenge</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -158,6 +166,7 @@ function CreateGroupModal({
 
 function JoinModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const colors = useColors();
+  const font = useFont();
   const { joinGroup } = useHabits();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -170,39 +179,33 @@ function JoinModal({ visible, onClose }: { visible: boolean; onClose: () => void
     } else {
       Alert.alert("Not Found", "No group found with that invite code.");
     }
-    setCode(""); setName("");
-    onClose();
+    setCode(""); setName(""); onClose();
+  };
+
+  const inputStyle = {
+    fontFamily: font.body, fontSize: font.size(16), color: colors.foreground,
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11, backgroundColor: colors.card, marginBottom: 20,
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={[styles.modalRoot, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <View style={styles.modalScroll}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.primary }]}>Join a Challenge</Text>
-            <Pressable onPress={onClose}>
-              <Feather name="x" size={24} color={colors.mutedForeground} />
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <View style={{ padding: 20 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <Text style={{ fontFamily: font.heading, fontSize: font.size(24), color: colors.primary }}>Join a Challenge</Text>
+            <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
-          <View style={[styles.mRule, { backgroundColor: colors.line }]} />
-
-          <Text style={[styles.label, { color: colors.primary }]}>Invite Code</Text>
-          <TextInput value={code} onChangeText={setCode} placeholder="e.g. AB12CD" autoCapitalize="characters"
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-
-          <Text style={[styles.label, { color: colors.primary }]}>Your Name</Text>
-          <TextInput value={name} onChangeText={setName} placeholder="How the group will see you"
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-
-          <TouchableOpacity onPress={join}
-            style={[styles.saveBtn, { backgroundColor: colors.primary, opacity: code.trim() && name.trim() ? 1 : 0.5 }]}
-            disabled={!code.trim() || !name.trim()}>
-            <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>Join Group</Text>
+          <View style={{ height: 1, backgroundColor: colors.line, marginBottom: 20 }} />
+          <SectionTitle label="Invite code" />
+          <TextInput value={code} onChangeText={setCode} placeholder="e.g. AB12CD" autoCapitalize="characters" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
+          <SectionTitle label="Your name" />
+          <TextInput value={name} onChangeText={setName} placeholder="How the group will see you" placeholderTextColor={colors.mutedForeground} style={inputStyle} />
+          <TouchableOpacity onPress={join} disabled={!code.trim() || !name.trim()}
+            style={{ backgroundColor: code.trim() && name.trim() ? colors.primary : colors.muted, borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: code.trim() && name.trim() ? 1 : 0.55 }}>
+            <Text style={{ fontFamily: font.label, fontSize: font.size(17), color: code.trim() && name.trim() ? "#fff" : colors.mutedForeground, fontWeight: "700" }}>Join Group</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -212,117 +215,294 @@ function JoinModal({ visible, onClose }: { visible: boolean; onClose: () => void
 
 function GroupCard({ group }: { group: Group }) {
   const colors = useColors();
+  const font = useFont();
   const [showCode, setShowCode] = useState(false);
   const start = new Date(group.startDate + "T12:00:00");
   const end = new Date(group.endDate + "T12:00:00");
   const now = new Date();
   const daysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-  const total = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const total = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  const elapsed = total - daysLeft;
+  const pct = Math.min(100, Math.round((elapsed / total) * 100));
 
   return (
-    <View style={[styles.groupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.groupTop}>
-        <Text style={[styles.groupName, { color: colors.foreground }]}>{group.name}</Text>
-        <Text style={[styles.groupDays, { color: colors.primary }]}>{daysLeft}d left</Text>
-      </View>
-      {group.description ? (
-        <Text style={[styles.groupDesc, { color: colors.mutedForeground }]}>{group.description}</Text>
-      ) : null}
-
-      <View style={[styles.groupRule, { backgroundColor: colors.line }]} />
-
-      {/* Progress bar */}
-      <View style={[styles.rateBar, { backgroundColor: colors.muted }]}>
-        <View style={[styles.rateFill, { backgroundColor: colors.primary, width: `${total > 0 ? Math.min(100, Math.round(((total - daysLeft) / total) * 100)) : 0}%` as any }]} />
-      </View>
-      <Text style={[styles.groupMeta, { color: colors.mutedForeground }]}>
-        Day {total - daysLeft} of {total}  ·  {group.members.length} member{group.members.length !== 1 ? "s" : ""}
-      </Text>
-
-      {/* Habits */}
-      {group.habitNames.length > 0 && (
-        <View style={styles.habitList}>
-          {group.habitNames.slice(0, 3).map((h, i) => (
-            <Text key={i} style={[styles.habitItem, { color: colors.mutedForeground }]}>• {h}</Text>
-          ))}
-          {group.habitNames.length > 3 && (
-            <Text style={[styles.habitItem, { color: colors.mutedForeground }]}>
-              +{group.habitNames.length - 3} more
-            </Text>
-          )}
+    <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+      <View style={{ height: 4, backgroundColor: colors.primary }} />
+      <View style={{ padding: 14 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <Text style={{ fontFamily: font.heading, fontSize: font.size(18), color: colors.foreground, flex: 1 }}>{group.name}</Text>
+          <View style={{ backgroundColor: colors.primary + "20", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ fontFamily: font.label, fontSize: font.size(12), color: colors.primary, fontWeight: "700" }}>{daysLeft}d left</Text>
+          </View>
         </View>
-      )}
+        {group.description ? <Text style={{ fontFamily: font.body, fontSize: font.size(13), color: colors.mutedForeground, marginBottom: 10 }}>{group.description}</Text> : null}
 
-      {/* Members */}
-      <View style={[styles.groupRule, { backgroundColor: colors.line }]} />
-      <Text style={[styles.membersLabel, { color: colors.primary }]}>Members</Text>
-      {group.members.map((m) => (
-        <View key={m.id} style={styles.memberRow}>
-          <Feather name="user" size={14} color={colors.mutedForeground} />
-          <Text style={[styles.memberName, { color: colors.foreground }]}>{m.name}</Text>
-          {m.name === group.creatorName && (
-            <Text style={[styles.creatorBadge, { color: colors.secondary }]}>(creator)</Text>
-          )}
+        <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.muted, overflow: "hidden", marginBottom: 4 }}>
+          <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.primary, width: `${pct}%` as any }} />
         </View>
-      ))}
-
-      {/* Invite code */}
-      <Pressable onPress={() => setShowCode(!showCode)} style={[styles.codeBtn, { borderColor: colors.border }]}>
-        <Feather name="share-2" size={14} color={colors.primary} />
-        <Text style={[styles.codeBtnText, { color: colors.primary }]}>
-          {showCode ? `Code: ${group.inviteCode}` : "Show invite code"}
+        <Text style={{ fontFamily: font.body, fontSize: font.size(11), color: colors.mutedForeground, marginBottom: 10 }}>
+          Day {elapsed} of {total} · {group.members.length} member{group.members.length !== 1 ? "s" : ""}
         </Text>
-      </Pressable>
+
+        {group.habitNames.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            {group.habitNames.slice(0, 4).map((h, i) => (
+              <View key={i} style={{ backgroundColor: colors.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ fontFamily: font.body, fontSize: font.size(11), color: colors.mutedForeground }}>· {h}</Text>
+              </View>
+            ))}
+            {group.habitNames.length > 4 && <Text style={{ fontFamily: font.body, fontSize: font.size(11), color: colors.mutedForeground, alignSelf: "center" }}>+{group.habitNames.length - 4} more</Text>}
+          </View>
+        )}
+
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+          {group.members.map((m) => (
+            <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.muted, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+              <Feather name="user" size={11} color={colors.mutedForeground} />
+              <Text style={{ fontFamily: font.body, fontSize: font.size(12), color: colors.foreground }}>{m.name}</Text>
+              {m.name === group.creatorName && <Text style={{ fontFamily: font.body, fontSize: font.size(10), color: colors.primary }}>★</Text>}
+            </View>
+          ))}
+        </View>
+
+        <Pressable onPress={() => setShowCode(!showCode)} style={{ flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, alignSelf: "flex-start" }}>
+          <Feather name="share-2" size={13} color={colors.primary} />
+          <Text style={{ fontFamily: font.label, fontSize: font.size(13), color: colors.primary }}>
+            {showCode ? `Code: ${group.inviteCode}` : "Show invite code"}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
-export default function GroupsScreen() {
+// ─── Main Profile Screen ──────────────────────────────────────────────────────
+export default function ProfileScreen() {
   const colors = useColors();
   const font = useFont();
   const insets = useSafeAreaInsets();
   const { groups } = useHabits();
+  const {
+    theme, fontStyle, fontSize,
+    userName, userEmoji,
+    setTheme, setFontStyle, setFontSize,
+    setUserName, setUserEmoji,
+    reset,
+  } = useSettings();
+
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(userName);
+  const [showAvatars, setShowAvatars] = useState(false);
+
   const topPad = insets.top;
+  const scrollPadBottom = Platform.OS === "web" ? 84 + 32 : insets.bottom + 80;
+
+  const saveName = () => {
+    setUserName(nameInput.trim());
+    setEditingName(false);
+  };
+
+  const handleReset = () => {
+    Alert.alert("Reset Settings", "Restore all settings to defaults?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Reset", style: "destructive", onPress: () => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); reset(); } },
+    ]);
+  };
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: colors.line }]}>
-        <Text style={[styles.screenTitle, { color: colors.primary, fontFamily: font.heading }]}>Accountability</Text>
-        <Text style={[styles.screenSub, { color: colors.mutedForeground, fontFamily: font.body }]}>
-          {groups.length} group challenge{groups.length !== 1 ? "s" : ""}
-        </Text>
-        <View style={[styles.actionRow]}>
-          <Pressable onPress={() => setShowCreate(true)}
-            style={[styles.actionBtn, { backgroundColor: colors.primary }]}>
-            <Feather name="plus" size={16} color={colors.primaryForeground} />
-            <Text style={[styles.actionBtnText, { color: colors.primaryForeground }]}>Create</Text>
-          </Pressable>
-          <Pressable onPress={() => setShowJoin(true)}
-            style={[styles.actionBtn, { backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border }]}>
-            <Feather name="users" size={16} color={colors.foreground} />
-            <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Join</Text>
-          </Pressable>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
+      <View style={{
+        paddingTop: topPad + 12, paddingBottom: 14, paddingHorizontal: 20,
+        borderBottomWidth: 1, borderBottomColor: colors.line,
+        flexDirection: "row", alignItems: "center",
+      }}>
+        <View style={{ width: 44 }} />
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+            <Text style={{ fontFamily: font.heading, fontSize: font.size(26), color: colors.primary }}>Profile</Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+          </View>
+          <Text style={{ fontFamily: font.body, fontSize: font.size(12), color: colors.mutedForeground, marginTop: 2 }}>
+            Personalize your journal
+          </Text>
         </View>
-        <View style={[styles.rule, { backgroundColor: colors.line }]} />
+        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: Platform.OS === "web" ? 34 + 84 : 100 }]}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: scrollPadBottom }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
+        {/* ── Profile Card ── */}
+        <View style={{
+          backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+          borderRadius: 16, overflow: "hidden", marginBottom: 24,
+        }}>
+          <View style={{ height: 5, backgroundColor: colors.primary }} />
+          <View style={{ padding: 20, alignItems: "center" }}>
+            {/* Avatar */}
+            <Pressable
+              onPress={() => setShowAvatars(!showAvatars)}
+              style={{
+                width: 80, height: 80, borderRadius: 40,
+                backgroundColor: colors.primary + "18",
+                borderWidth: 2, borderColor: colors.primary + "40",
+                alignItems: "center", justifyContent: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontSize: 44 }}>{userEmoji}</Text>
+              <View style={{
+                position: "absolute", bottom: -2, right: -2,
+                backgroundColor: colors.primary, borderRadius: 10,
+                width: 20, height: 20, alignItems: "center", justifyContent: "center",
+              }}>
+                <Feather name="edit-2" size={10} color="#fff" />
+              </View>
+            </Pressable>
+
+            {/* Avatar picker */}
+            {showAvatars && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+                {AVATARS.map((a) => (
+                  <Pressable key={a} onPress={() => { setUserEmoji(a); setShowAvatars(false); Haptics.selectionAsync(); }}
+                    style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: userEmoji === a ? colors.primary + "20" : colors.muted, borderWidth: userEmoji === a ? 2 : 1, borderColor: userEmoji === a ? colors.primary : colors.border }}>
+                    <Text style={{ fontSize: 24 }}>{a}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {/* Name */}
+            {editingName ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <TextInput
+                  autoFocus
+                  value={nameInput}
+                  onChangeText={setNameInput}
+                  onBlur={saveName}
+                  onSubmitEditing={saveName}
+                  placeholder="Your name"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={{
+                    fontFamily: font.heading, fontSize: font.size(20), color: colors.foreground,
+                    borderBottomWidth: 2, borderBottomColor: colors.primary,
+                    paddingBottom: 4, minWidth: 140, textAlign: "center",
+                  }}
+                />
+                <Pressable onPress={saveName}>
+                  <Feather name="check" size={18} color={colors.primary} />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => { setEditingName(true); setNameInput(userName); }} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontFamily: font.heading, fontSize: font.size(22), color: userName ? colors.foreground : colors.mutedForeground }}>
+                  {userName || "Tap to set your name"}
+                </Text>
+                <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+            <Text style={{ fontFamily: font.body, fontSize: font.size(12), color: colors.mutedForeground, marginTop: 4 }}>
+              Habit Journal · Since today
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Appearance ── */}
+        <SectionTitle label="Journal Theme" />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
+          {THEME_ORDER.map((key) => {
+            const t = THEMES[key];
+            const selected = theme === key;
+            return (
+              <Pressable key={key} onPress={() => { Haptics.selectionAsync(); setTheme(key); }}
+                style={{ width: "30%", borderRadius: 12, padding: 10, backgroundColor: t.card, borderWidth: selected ? 2.5 : 1, borderColor: selected ? t.primary : t.border, position: "relative", overflow: "hidden" }}>
+                <View style={{ flexDirection: "row", gap: 4, marginBottom: 6 }}>
+                  {t.swatches.map((s, i) => <View key={i} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: s }} />)}
+                </View>
+                <View style={{ height: 4, borderRadius: 2, backgroundColor: t.background, marginBottom: 8 }} />
+                <Text style={{ fontFamily: selected ? "Inter_600SemiBold" : "Inter_400Regular", fontSize: 12, color: selected ? t.primary : t.mutedForeground, textAlign: "center" }} numberOfLines={1}>{t.label}</Text>
+                {selected && (
+                  <View style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 9, backgroundColor: t.primary, alignItems: "center", justifyContent: "center" }}>
+                    <Feather name="check" size={10} color={t.primaryForeground} />
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <SectionTitle label="Font Style" />
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
+          {FONT_OPTIONS.map((opt) => {
+            const selected = fontStyle === opt.key;
+            return (
+              <Pressable key={opt.key} onPress={() => { Haptics.selectionAsync(); setFontStyle(opt.key); }}
+                style={{ flex: 1, borderRadius: 12, padding: 16, alignItems: "center", backgroundColor: colors.card, borderWidth: selected ? 2.5 : 1, borderColor: selected ? colors.primary : colors.border, position: "relative" }}>
+                <Text style={{ fontFamily: opt.preview, fontSize: 34, color: selected ? colors.primary : colors.mutedForeground, lineHeight: 42 }}>Aa</Text>
+                <Text style={{ fontFamily: font.body, fontSize: font.size(12), color: selected ? colors.foreground : colors.mutedForeground, marginTop: 4 }}>{opt.label}</Text>
+                {selected && (
+                  <View style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+                    <Feather name="check" size={10} color={colors.primaryForeground} />
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <SectionTitle label="Text Size" />
+        <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
+          {SIZE_OPTIONS.map((opt) => {
+            const selected = fontSize === opt.key;
+            return (
+              <Pressable key={opt.key} onPress={() => { Haptics.selectionAsync(); setFontSize(opt.key); }}
+                style={{ flex: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center", backgroundColor: selected ? colors.primary : colors.card, borderWidth: 1, borderColor: selected ? colors.primary : colors.border }}>
+                <Text style={{ fontFamily: font.heading, fontSize: opt.size, color: selected ? colors.primaryForeground : colors.foreground, lineHeight: opt.size + 8 }}>A</Text>
+                <Text style={{ fontFamily: font.body, fontSize: 11, color: selected ? colors.primaryForeground : colors.mutedForeground, marginTop: 2 }}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* ── Groups ── */}
+        <View style={{ height: 1, backgroundColor: colors.line, marginBottom: 20 }} />
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <SectionTitle label="Accountability Groups" />
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+            <Pressable onPress={() => setShowCreate(true)} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.primary }}>
+              <Feather name="plus" size={14} color={colors.primaryForeground} />
+              <Text style={{ fontFamily: font.label, fontSize: font.size(13), color: colors.primaryForeground }}>Create</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowJoin(true)} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border }}>
+              <Feather name="users" size={14} color={colors.foreground} />
+              <Text style={{ fontFamily: font.label, fontSize: font.size(13), color: colors.foreground }}>Join</Text>
+            </Pressable>
+          </View>
+        </View>
+
         {groups.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Feather name="users" size={40} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Groups Yet</Text>
-            <Text style={[styles.emptyDesc, { color: colors.mutedForeground }]}>
+          <View style={{ alignItems: "center", paddingVertical: 32, paddingHorizontal: 16, backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 24, gap: 8 }}>
+            <Feather name="users" size={32} color={colors.mutedForeground} />
+            <Text style={{ fontFamily: font.heading, fontSize: font.size(18), color: colors.foreground }}>No groups yet</Text>
+            <Text style={{ fontFamily: font.body, fontSize: font.size(14), color: colors.mutedForeground, textAlign: "center", lineHeight: 22 }}>
               Create a challenge or join one with an invite code to stay accountable with friends.
             </Text>
           </View>
         ) : (
           groups.map((g) => <GroupCard key={g.id} group={g} />)
         )}
+
+        {/* Reset */}
+        <TouchableOpacity onPress={handleReset} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: colors.destructive, borderRadius: 12, paddingVertical: 13, marginTop: 8 }}>
+          <Feather name="rotate-ccw" size={15} color={colors.destructive} />
+          <Text style={{ fontFamily: font.label, fontSize: font.size(15), color: colors.destructive }}>Reset to Defaults</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <CreateGroupModal visible={showCreate} onClose={() => setShowCreate(false)} />
@@ -330,52 +510,3 @@ export default function GroupsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: 1 },
-  screenTitle: { fontFamily: "Caveat_700Bold", fontSize: 30, marginBottom: 2 },
-  screenSub: { fontFamily: "Caveat_400Regular", fontSize: 16, marginBottom: 10 },
-  rule: { height: 1 },
-  actionRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  actionBtnText: { fontFamily: "Caveat_700Bold", fontSize: 16 },
-  scroll: { paddingHorizontal: 16, paddingTop: 16 },
-  emptyState: { alignItems: "center", paddingTop: 60, gap: 12, paddingHorizontal: 20 },
-  emptyTitle: { fontFamily: "Caveat_700Bold", fontSize: 22 },
-  emptyDesc: { fontFamily: "Caveat_400Regular", fontSize: 17, textAlign: "center", lineHeight: 26 },
-  groupCard: { borderWidth: 1, borderRadius: 8, padding: 16, marginBottom: 14 },
-  groupTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  groupName: { fontFamily: "Caveat_700Bold", fontSize: 20, flex: 1 },
-  groupDays: { fontFamily: "Caveat_700Bold", fontSize: 18 },
-  groupDesc: { fontFamily: "Caveat_400Regular", fontSize: 15, marginBottom: 10 },
-  groupRule: { height: 1, marginVertical: 10 },
-  rateBar: { height: 5, borderRadius: 3, overflow: "hidden", marginBottom: 4 },
-  rateFill: { height: 5, borderRadius: 3 },
-  groupMeta: { fontFamily: "Caveat_400Regular", fontSize: 13, marginBottom: 8 },
-  habitList: { marginBottom: 4 },
-  habitItem: { fontFamily: "Caveat_400Regular", fontSize: 14, marginBottom: 2 },
-  membersLabel: { fontFamily: "Caveat_700Bold", fontSize: 16, marginBottom: 6 },
-  memberRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  memberName: { fontFamily: "Caveat_400Regular", fontSize: 16 },
-  creatorBadge: { fontFamily: "Caveat_400Regular", fontSize: 12 },
-  codeBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, marginTop: 10, alignSelf: "flex-start" },
-  codeBtnText: { fontFamily: "Caveat_700Bold", fontSize: 15 },
-  modalRoot: { flex: 1 },
-  modalScroll: { padding: 24, paddingBottom: 48 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  modalTitle: { fontFamily: "Caveat_700Bold", fontSize: 28 },
-  mRule: { height: 1, marginBottom: 20 },
-  label: { fontFamily: "Caveat_700Bold", fontSize: 18, marginBottom: 8, marginTop: 4 },
-  input: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, fontFamily: "Caveat_400Regular", fontSize: 18, marginBottom: 16, textAlignVertical: "top" },
-  habitInputRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
-  habitInput: { flex: 1, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 10, fontFamily: "Caveat_400Regular", fontSize: 18 },
-  addBtn: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  habitChip: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6 },
-  habitChipText: { fontFamily: "Caveat_400Regular", fontSize: 16, flex: 1 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
-  chip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
-  chipText: { fontFamily: "Caveat_400Regular", fontSize: 15 },
-  saveBtn: { borderRadius: 8, paddingVertical: 14, alignItems: "center", marginTop: 12 },
-  saveBtnText: { fontFamily: "Caveat_700Bold", fontSize: 20 },
-});

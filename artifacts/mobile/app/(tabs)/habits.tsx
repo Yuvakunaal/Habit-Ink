@@ -558,7 +558,7 @@ export default function HabitsScreen() {
   const [editing, setEditing] = useState<Habit | undefined>();
 
   const topPad = insets.top;
-  const listPadBottom = insets.bottom + 24;
+  const listPadBottom = Platform.OS === "web" ? 84 + 32 : insets.bottom + 80;
 
   const confirmDelete = (id: string, name: string) => {
     Alert.alert("Remove Habit", `Remove "${name}" from your journal?`, [

@@ -16,6 +16,8 @@ interface SettingsState {
   theme: ThemeName;
   fontStyle: FontStyle;
   fontSize: FontSize;
+  userName: string;
+  userEmoji: string;
 }
 
 interface SettingsContextValue extends SettingsState {
@@ -23,6 +25,8 @@ interface SettingsContextValue extends SettingsState {
   setTheme: (t: ThemeName) => void;
   setFontStyle: (f: FontStyle) => void;
   setFontSize: (s: FontSize) => void;
+  setUserName: (n: string) => void;
+  setUserEmoji: (e: string) => void;
   reset: () => void;
 }
 
@@ -30,6 +34,8 @@ const DEFAULTS: SettingsState = {
   theme: "cream",
   fontStyle: "handwritten",
   fontSize: "medium",
+  userName: "",
+  userEmoji: "😊",
 };
 
 const STORAGE_KEY = "@habitjournal/settings";
@@ -70,6 +76,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => ({ ...prev, fontSize }));
   }, []);
 
+  const setUserName = useCallback((userName: string) => {
+    setSettings((prev) => ({ ...prev, userName }));
+  }, []);
+
+  const setUserEmoji = useCallback((userEmoji: string) => {
+    setSettings((prev) => ({ ...prev, userEmoji }));
+  }, []);
+
   const reset = useCallback(() => {
     setSettings(DEFAULTS);
   }, []);
@@ -84,6 +98,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setTheme,
         setFontStyle,
         setFontSize,
+        setUserName,
+        setUserEmoji,
         reset,
       }}
     >
