@@ -1,2 +1,4 @@
-- [Expo font switching pattern](expo-font-switching.md) — fonts must be inline styles, not StyleSheet.create(), for dynamic switching via useFont()
-- [SVG CompletionRing](svg-ring-pattern.md) — use transform string syntax for rotation, not the `rotation` prop, in react-native-svg Circle
+- [Orval codegen conflict](orval-zod-conflict.md) — Orval generates both `api.ts` and `types` (empty); only re-export `./generated/api` to avoid duplicate-name TS errors.
+- [Habit emoji/color fields](habit-emoji-color.md) — Habit type has `emoji` and `color` (string), defaulting to '✅' / '#2B3A8C'; backward compat via `h.emoji ?? '✅'` on load.
+- [API sync pattern](api-sync-pattern.md) — HabitContext does fire-and-forget syncs to backend using EXPO_PUBLIC_DOMAIN; local AsyncStorage remains source of truth.
+- [DB tables live](db-schema.md) — habits, habit_entries (composite unique habitId+date), journals (unique date) in PostgreSQL via Drizzle ORM.

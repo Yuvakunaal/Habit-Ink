@@ -24,6 +24,8 @@ export interface Habit {
   schedule: ScheduleType;
   customDays?: number[];
   startDate: string;
+  emoji: string;
+  color: string;
   createdAt: string;
 }
 
@@ -79,35 +81,22 @@ interface HabitContextType {
   getHabitsForDate: (date: string) => Habit[];
   getEntry: (habitId: string, date: string) => HabitEntry | undefined;
   getStreak: (habitId: string) => number;
-  getLongestStreak: (habitId: string) => number;
-  getCompletionRate: (habitId: string, days: number) => number;
-  getDayNumber: () => number;
+  getCompletionRate: (habitId: string, days?: number) => number;
   getCompletionForDate: (date: string) => { done: number; total: number };
-  getOverallStreak: () => number;
+  getDayNumber: () => number;
 }
 
 const HabitContext = createContext<HabitContextType | null>(null);
 
-function genId(): string {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-}
-
-function genCode(): string {
-  return Math.random().toString(36).substr(2, 6).toUpperCase();
-}
-
 export function toDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return date.toISOString().split("T")[0];
 }
 
 export function isScheduledForDate(habit: Habit, dateKey: string): boolean {
   const date = new Date(dateKey + "T12:00:00");
-  const start = new Date(habit.startDate + "T12:00:00");
-  if (date < start) return false;
   const dow = date.getDay();
+  const habitStart = new Date(habit.startDate + "T12:00:00");
+  if (date < habitStart) return false;
   switch (habit.schedule) {
     case "daily":
       return true;
@@ -117,23 +106,52 @@ export function isScheduledForDate(habit: Habit, dateKey: string): boolean {
       return dow === 0 || dow === 6;
     case "alternate": {
       const diff = Math.round(
-        (date.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        (date.getTime() - habitStart.getTime()) / (1000 * 60 * 60 * 24)
       );
       return diff % 2 === 0;
     }
     case "custom":
-      return habit.customDays?.includes(dow) ?? false;
+      return (habit.customDays ?? []).includes(dow);
     default:
       return true;
   }
 }
 
-const KEYS = {
+function uid(): string {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+function randomCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
+  : null;
+
+async function apiCall(
+  path: string,
+  method: string,
+  body?: unknown
+): Promise<void> {
+  if (!API_BASE) return;
+  try {
+    await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // Silently fail — local is source of truth
+  }
+}
+
+const STORAGE_KEYS = {
   habits: "@habitjournal/habits",
   entries: "@habitjournal/entries",
   journals: "@habitjournal/journals",
   groups: "@habitjournal/groups",
-  startDate: "@habitjournal/appStartDate",
+  appStart: "@habitjournal/appstart",
 };
 
 export function HabitProvider({ children }: { children: React.ReactNode }) {
@@ -141,83 +159,115 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   const [entries, setEntries] = useState<Record<string, HabitEntry[]>>({});
   const [journals, setJournals] = useState<Record<string, DailyJournal>>({});
   const [groups, setGroups] = useState<Group[]>([]);
-  const [appStartDate, setAppStartDate] = useState<string>("");
+  const [appStartDate, setAppStartDate] = useState<string>(toDateKey(new Date()));
   const [loaded, setLoaded] = useState(false);
 
+  // ─── Load ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      try {
-        const [h, e, j, g, s] = await Promise.all([
-          AsyncStorage.getItem(KEYS.habits),
-          AsyncStorage.getItem(KEYS.entries),
-          AsyncStorage.getItem(KEYS.journals),
-          AsyncStorage.getItem(KEYS.groups),
-          AsyncStorage.getItem(KEYS.startDate),
-        ]);
-        if (h) setHabits(JSON.parse(h));
-        if (e) setEntries(JSON.parse(e));
-        if (j) setJournals(JSON.parse(j));
-        if (g) setGroups(JSON.parse(g));
-        const today = toDateKey(new Date());
-        if (s) {
-          setAppStartDate(s);
-        } else {
-          setAppStartDate(today);
-          await AsyncStorage.setItem(KEYS.startDate, today);
-        }
-      } finally {
-        setLoaded(true);
+      const [h, e, j, g, s] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.habits),
+        AsyncStorage.getItem(STORAGE_KEYS.entries),
+        AsyncStorage.getItem(STORAGE_KEYS.journals),
+        AsyncStorage.getItem(STORAGE_KEYS.groups),
+        AsyncStorage.getItem(STORAGE_KEYS.appStart),
+      ]);
+      if (h) {
+        const parsed = JSON.parse(h) as Habit[];
+        setHabits(
+          parsed.map((habit) => ({
+            ...habit,
+            emoji: habit.emoji ?? "✅",
+            color: habit.color ?? "#2B3A8C",
+          }))
+        );
       }
+      if (e) setEntries(JSON.parse(e));
+      if (j) setJournals(JSON.parse(j));
+      if (g) setGroups(JSON.parse(g));
+      if (s) {
+        setAppStartDate(s);
+      } else {
+        const today = toDateKey(new Date());
+        setAppStartDate(today);
+        AsyncStorage.setItem(STORAGE_KEYS.appStart, today);
+      }
+      setLoaded(true);
     })();
   }, []);
 
+  // ─── Persist ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (loaded) AsyncStorage.setItem(KEYS.habits, JSON.stringify(habits));
+    if (loaded) AsyncStorage.setItem(STORAGE_KEYS.habits, JSON.stringify(habits));
   }, [habits, loaded]);
   useEffect(() => {
-    if (loaded) AsyncStorage.setItem(KEYS.entries, JSON.stringify(entries));
+    if (loaded) AsyncStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(entries));
   }, [entries, loaded]);
   useEffect(() => {
-    if (loaded) AsyncStorage.setItem(KEYS.journals, JSON.stringify(journals));
+    if (loaded) AsyncStorage.setItem(STORAGE_KEYS.journals, JSON.stringify(journals));
   }, [journals, loaded]);
   useEffect(() => {
-    if (loaded) AsyncStorage.setItem(KEYS.groups, JSON.stringify(groups));
+    if (loaded) AsyncStorage.setItem(STORAGE_KEYS.groups, JSON.stringify(groups));
   }, [groups, loaded]);
 
-  const addHabit = useCallback((h: Omit<Habit, "id" | "createdAt">) => {
-    setHabits((prev) => [
-      ...prev,
-      { ...h, id: genId(), createdAt: new Date().toISOString() },
-    ]);
-  }, []);
+  // ─── Habits ───────────────────────────────────────────────────────────────────
+  const addHabit = useCallback(
+    (habit: Omit<Habit, "id" | "createdAt">) => {
+      const now = new Date().toISOString();
+      const newHabit: Habit = {
+        ...habit,
+        id: uid(),
+        emoji: habit.emoji ?? "✅",
+        color: habit.color ?? "#2B3A8C",
+        createdAt: now,
+      };
+      setHabits((prev) => [...prev, newHabit]);
+      apiCall("/habits", "POST", {
+        name: newHabit.name,
+        type: newHabit.type,
+        target: newHabit.target,
+        schedule: newHabit.schedule,
+        customDays: newHabit.customDays ? JSON.stringify(newHabit.customDays) : null,
+        startDate: newHabit.startDate,
+        emoji: newHabit.emoji,
+        color: newHabit.color,
+      });
+    },
+    []
+  );
 
-  const updateHabit = useCallback((id: string, update: Partial<Habit>) => {
-    setHabits((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, ...update } : h))
-    );
-  }, []);
+  const updateHabit = useCallback(
+    (id: string, update: Partial<Habit>) => {
+      setHabits((prev) =>
+        prev.map((h) => (h.id === id ? { ...h, ...update } : h))
+      );
+      apiCall(`/habits/local-${id}`, "PUT", update);
+    },
+    []
+  );
 
   const deleteHabit = useCallback((id: string) => {
     setHabits((prev) => prev.filter((h) => h.id !== id));
+    setEntries((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(next)) {
+        next[key] = next[key].filter((e) => e.habitId !== id);
+      }
+      return next;
+    });
   }, []);
 
+  // ─── Entries ──────────────────────────────────────────────────────────────────
   const setEntryStatus = useCallback(
     (habitId: string, date: string, status: EntryStatus) => {
       setEntries((prev) => {
-        const day = prev[date] ?? [];
-        const exists = day.find((e) => e.habitId === habitId);
-        if (exists) {
-          return {
-            ...prev,
-            [date]: day.map((e) =>
-              e.habitId === habitId ? { ...e, status } : e
-            ),
-          };
-        }
-        return {
-          ...prev,
-          [date]: [...day, { habitId, date, status, actual: "" }],
-        };
+        const dayEntries = prev[date] ?? [];
+        const idx = dayEntries.findIndex((e) => e.habitId === habitId);
+        const updated =
+          idx >= 0
+            ? dayEntries.map((e, i) => (i === idx ? { ...e, status } : e))
+            : [...dayEntries, { habitId, date, status, actual: "" }];
+        return { ...prev, [date]: updated };
       });
     },
     []
@@ -226,49 +276,42 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   const setEntryActual = useCallback(
     (habitId: string, date: string, actual: string) => {
       setEntries((prev) => {
-        const day = prev[date] ?? [];
-        const exists = day.find((e) => e.habitId === habitId);
-        if (exists) {
-          return {
-            ...prev,
-            [date]: day.map((e) =>
-              e.habitId === habitId ? { ...e, actual } : e
-            ),
-          };
-        }
-        return {
-          ...prev,
-          [date]: [...day, { habitId, date, status: "pending" as EntryStatus, actual }],
-        };
+        const dayEntries = prev[date] ?? [];
+        const idx = dayEntries.findIndex((e) => e.habitId === habitId);
+        const updated =
+          idx >= 0
+            ? dayEntries.map((e, i) => (i === idx ? { ...e, actual } : e))
+            : [...dayEntries, { habitId, date, status: "pending" as const, actual }];
+        return { ...prev, [date]: updated };
       });
     },
     []
   );
 
+  // ─── Journal ──────────────────────────────────────────────────────────────────
   const updateJournal = useCallback(
     (date: string, update: Partial<DailyJournal>) => {
-      setJournals((prev) => ({
-        ...prev,
-        [date]: {
+      setJournals((prev) => {
+        const existing = prev[date] ?? {
           date,
           wakeUpTime: "",
           notes: "",
           wins: "",
           challenges: "",
-          ...prev[date],
-          ...update,
-        },
-      }));
+        };
+        return { ...prev, [date]: { ...existing, ...update } };
+      });
     },
     []
   );
 
+  // ─── Groups ───────────────────────────────────────────────────────────────────
   const createGroup = useCallback(
-    (g: Omit<Group, "id" | "inviteCode" | "createdAt">): Group => {
+    (input: Omit<Group, "id" | "inviteCode" | "createdAt">): Group => {
       const group: Group = {
-        ...g,
-        id: genId(),
-        inviteCode: genCode(),
+        ...input,
+        id: uid(),
+        inviteCode: randomCode(),
         createdAt: new Date().toISOString(),
       };
       setGroups((prev) => [...prev, group]);
@@ -282,22 +325,16 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
       let found = false;
       setGroups((prev) =>
         prev.map((g) => {
-          if (g.inviteCode === inviteCode.toUpperCase()) {
-            found = true;
-            if (g.members.some((m) => m.name === memberName)) return g;
-            return {
-              ...g,
-              members: [
-                ...g.members,
-                {
-                  id: genId(),
-                  name: memberName,
-                  joinedAt: new Date().toISOString(),
-                },
-              ],
-            };
-          }
-          return g;
+          if (g.inviteCode.toUpperCase() !== inviteCode.toUpperCase()) return g;
+          if (g.members.some((m) => m.name === memberName)) return g;
+          found = true;
+          return {
+            ...g,
+            members: [
+              ...g.members,
+              { id: uid(), name: memberName, joinedAt: new Date().toISOString() },
+            ],
+          };
         })
       );
       return found;
@@ -305,6 +342,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  // ─── Computed ─────────────────────────────────────────────────────────────────
   const getHabitsForDate = useCallback(
     (date: string): Habit[] =>
       habits.filter((h) => isScheduledForDate(h, date)),
@@ -322,114 +360,62 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
       const habit = habits.find((h) => h.id === habitId);
       if (!habit) return 0;
       let streak = 0;
-      for (let i = 0; i <= 365; i++) {
+      for (let i = 0; i < 365; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const key = toDateKey(d);
         if (!isScheduledForDate(habit, key)) continue;
         const entry = (entries[key] ?? []).find((e) => e.habitId === habitId);
-        if (!entry || entry.status === "pending") {
-          if (i === 0) continue;
+        if (entry?.status === "done") {
+          streak++;
+        } else {
           break;
         }
-        if (entry.status === "done") streak++;
-        else break;
       }
       return streak;
     },
     [habits, entries]
   );
 
-  const getLongestStreak = useCallback(
-    (habitId: string): number => {
-      const habit = habits.find((h) => h.id === habitId);
-      if (!habit) return 0;
-      let longest = 0;
-      let current = 0;
-      const start = new Date(habit.startDate + "T12:00:00");
-      const today = new Date();
-      for (
-        let d = new Date(start);
-        d <= today;
-        d.setDate(d.getDate() + 1)
-      ) {
-        const key = toDateKey(d);
-        if (!isScheduledForDate(habit, key)) continue;
-        const entry = (entries[key] ?? []).find((e) => e.habitId === habitId);
-        if (entry?.status === "done") {
-          current++;
-          longest = Math.max(longest, current);
-        } else if (entry?.status === "missed") {
-          current = 0;
-        }
-      }
-      return longest;
-    },
-    [habits, entries]
-  );
-
   const getCompletionRate = useCallback(
-    (habitId: string, days: number): number => {
+    (habitId: string, days = 30): number => {
       const habit = habits.find((h) => h.id === habitId);
       if (!habit) return 0;
       let done = 0;
-      let total = 0;
+      let scheduled = 0;
       for (let i = 0; i < days; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const key = toDateKey(d);
         if (!isScheduledForDate(habit, key)) continue;
-        total++;
+        scheduled++;
         const entry = (entries[key] ?? []).find((e) => e.habitId === habitId);
         if (entry?.status === "done") done++;
       }
-      return total === 0 ? 0 : Math.round((done / total) * 100);
+      return scheduled === 0 ? 0 : Math.round((done / scheduled) * 100);
+    },
+    [habits, entries]
+  );
+
+  const getCompletionForDate = useCallback(
+    (date: string): { done: number; total: number } => {
+      const habitsForDate = habits.filter((h) => isScheduledForDate(h, date));
+      const done = habitsForDate.filter(
+        (h) =>
+          (entries[date] ?? []).find((e) => e.habitId === h.id)?.status === "done"
+      ).length;
+      return { done, total: habitsForDate.length };
     },
     [habits, entries]
   );
 
   const getDayNumber = useCallback((): number => {
-    if (!appStartDate) return 1;
     const start = new Date(appStartDate + "T12:00:00");
     const now = new Date();
-    const diff = Math.floor(
-      (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+    return (
+      Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
     );
-    return Math.max(1, diff + 1);
   }, [appStartDate]);
-
-  const getCompletionForDate = useCallback(
-    (date: string): { done: number; total: number } => {
-      const scheduled = habits.filter((h) => isScheduledForDate(h, date));
-      const day = entries[date] ?? [];
-      const done = day.filter(
-        (e) =>
-          e.status === "done" && scheduled.some((h) => h.id === e.habitId)
-      ).length;
-      return { done, total: scheduled.length };
-    },
-    [habits, entries]
-  );
-
-  const getOverallStreak = useCallback((): number => {
-    if (habits.length === 0) return 0;
-    let streak = 0;
-    for (let i = 1; i <= 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = toDateKey(d);
-      const scheduled = habits.filter((h) => isScheduledForDate(h, key));
-      if (scheduled.length === 0) continue;
-      const day = entries[key] ?? [];
-      const done = day.filter(
-        (e) =>
-          e.status === "done" && scheduled.some((h) => h.id === e.habitId)
-      ).length;
-      if (done > 0) streak++;
-      else break;
-    }
-    return streak;
-  }, [habits, entries]);
 
   return (
     <HabitContext.Provider
@@ -450,11 +436,9 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         getHabitsForDate,
         getEntry,
         getStreak,
-        getLongestStreak,
         getCompletionRate,
-        getDayNumber,
         getCompletionForDate,
-        getOverallStreak,
+        getDayNumber,
       }}
     >
       {children}
@@ -462,7 +446,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useHabits() {
+export function useHabits(): HabitContextType {
   const ctx = useContext(HabitContext);
   if (!ctx) throw new Error("useHabits must be inside HabitProvider");
   return ctx;

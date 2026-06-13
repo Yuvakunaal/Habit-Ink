@@ -6,6 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
+export interface HabitEntry {
+  id: number;
+  habitId: number;
+  date: string;
   status: string;
+  actual: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

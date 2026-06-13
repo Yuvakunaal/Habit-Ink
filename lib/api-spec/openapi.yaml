@@ -3,20 +3,26 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Habit Journal API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: habits
+    description: Habit CRUD
+  - name: entries
+    description: Habit entry tracking
+  - name: journals
+    description: Daily journal entries
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +30,187 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /habits:
+    get:
+      operationId: listHabits
+      tags: [habits]
+      summary: List all habits
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Habit"
+    post:
+      operationId: createHabit
+      tags: [habits]
+      summary: Create a habit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHabitBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+
+  /habits/{id}:
+    put:
+      operationId: updateHabit
+      tags: [habits]
+      summary: Update a habit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateHabitBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+    delete:
+      operationId: deleteHabit
+      tags: [habits]
+      summary: Delete a habit
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /entries:
+    get:
+      operationId: listEntries
+      tags: [entries]
+      summary: List entries
+      parameters:
+        - in: query
+          name: date
+          schema:
+            type: string
+        - in: query
+          name: habitId
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HabitEntry"
+    post:
+      operationId: upsertEntry
+      tags: [entries]
+      summary: Upsert a habit entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertEntryBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HabitEntry"
+
+  /entries/{id}:
+    delete:
+      operationId: deleteEntry
+      tags: [entries]
+      summary: Delete an entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /journals/{date}:
+    get:
+      operationId: getJournal
+      tags: [journals]
+      summary: Get journal for a date
+      parameters:
+        - in: path
+          name: date
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+    put:
+      operationId: upsertJournal
+      tags: [journals]
+      summary: Upsert journal for a date
+      parameters:
+        - in: path
+          name: date
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertJournalBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JournalEntry"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +221,179 @@ components:
       required:
         - status
 
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Habit:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        target:
+          type: string
+        schedule:
+          type: string
+        customDays:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+        emoji:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - type
+        - target
+        - schedule
+        - startDate
+        - emoji
+        - color
+        - createdAt
+        - updatedAt
+
+    CreateHabitBody:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        target:
+          type: string
+        schedule:
+          type: string
+        customDays:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+        emoji:
+          type: string
+        color:
+          type: string
+      required:
+        - name
+        - startDate
+
+    UpdateHabitBody:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        target:
+          type: string
+        schedule:
+          type: string
+        customDays:
+          type: string
+          nullable: true
+        emoji:
+          type: string
+        color:
+          type: string
+
+    HabitEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        habitId:
+          type: integer
+        date:
+          type: string
+        status:
+          type: string
+        actual:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - habitId
+        - date
+        - status
+        - actual
+        - createdAt
+        - updatedAt
+
+    UpsertEntryBody:
+      type: object
+      properties:
+        habitId:
+          type: integer
+        date:
+          type: string
+        status:
+          type: string
+        actual:
+          type: string
+      required:
+        - habitId
+        - date
+
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+        wakeUpTime:
+          type: string
+        notes:
+          type: string
+        wins:
+          type: string
+        challenges:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - date
+        - wakeUpTime
+        - notes
+        - wins
+        - challenges
+        - createdAt
+        - updatedAt
+
+    UpsertJournalBody:
+      type: object
+      properties:
+        wakeUpTime:
+          type: string
+        notes:
+          type: string
+        wins:
+          type: string
+        challenges:
+          type: string
