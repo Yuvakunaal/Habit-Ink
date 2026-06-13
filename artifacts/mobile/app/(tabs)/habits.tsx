@@ -558,7 +558,9 @@ export default function HabitsScreen() {
   const [editing, setEditing] = useState<Habit | undefined>();
 
   const topPad = insets.top;
-  const botPad = Platform.OS === "web" ? 34 + 84 : 100;
+  const TAB_BAR_HEIGHT = 60;
+  const fabBottom = insets.bottom + TAB_BAR_HEIGHT + 12;
+  const listPadBottom = insets.bottom + TAB_BAR_HEIGHT + 90;
 
   const confirmDelete = (id: string, name: string) => {
     Alert.alert("Remove Habit", `Remove "${name}" from your journal?`, [
@@ -608,7 +610,7 @@ export default function HabitsScreen() {
 
       {/* List */}
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: botPad }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: listPadBottom }}
         showsVerticalScrollIndicator={false}
       >
         {habits.length === 0 ? (
@@ -647,7 +649,7 @@ export default function HabitsScreen() {
       </ScrollView>
 
       {/* FAB */}
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: botPad - 60, alignItems: "center" }}>
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: fabBottom, alignItems: "center" }}>
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => {
