@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { isScheduledForDate, toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
+import { useFont } from "@/hooks/useFont";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const MONTHS = [
@@ -29,6 +30,7 @@ function getFirstDayOfWeek(year: number, month: number): number {
 
 export default function CalendarScreen() {
   const colors = useColors();
+  const font = useFont();
   const insets = useSafeAreaInsets();
   const { habits, getCompletionForDate, getHabitsForDate } = useHabits();
 
@@ -69,7 +71,7 @@ export default function CalendarScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: colors.line }]}>
-        <Text style={[styles.screenTitle, { color: colors.primary }]}>
+        <Text style={[styles.screenTitle, { color: colors.primary, fontFamily: font.heading }]}>
           Calendar
         </Text>
         <View style={[styles.rule, { backgroundColor: colors.line }]} />

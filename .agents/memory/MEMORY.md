@@ -1,0 +1,2 @@
+- [Expo font switching pattern](expo-font-switching.md) — fonts must be inline styles, not StyleSheet.create(), for dynamic switching via useFont()
+- [SVG CompletionRing](svg-ring-pattern.md) — use transform string syntax for rotation, not the `rotation` prop, in react-native-svg Circle

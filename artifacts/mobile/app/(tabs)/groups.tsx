@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Group, ScheduleType, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
+import { useFont } from "@/hooks/useFont";
 
 const SCHEDULES: { key: ScheduleType; label: string }[] = [
   { key: "daily", label: "Every Day" },
@@ -278,6 +279,7 @@ function GroupCard({ group }: { group: Group }) {
 
 export default function GroupsScreen() {
   const colors = useColors();
+  const font = useFont();
   const insets = useSafeAreaInsets();
   const { groups } = useHabits();
   const [showCreate, setShowCreate] = useState(false);
@@ -287,8 +289,8 @@ export default function GroupsScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: colors.line }]}>
-        <Text style={[styles.screenTitle, { color: colors.primary }]}>Accountability</Text>
-        <Text style={[styles.screenSub, { color: colors.mutedForeground }]}>
+        <Text style={[styles.screenTitle, { color: colors.primary, fontFamily: font.heading }]}>Accountability</Text>
+        <Text style={[styles.screenSub, { color: colors.mutedForeground, fontFamily: font.body }]}>
           {groups.length} group challenge{groups.length !== 1 ? "s" : ""}
         </Text>
         <View style={[styles.actionRow]}>

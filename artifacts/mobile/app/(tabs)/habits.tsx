@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Habit, HabitType, ScheduleType, toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
+import { useFont } from "@/hooks/useFont";
 
 const HABIT_TYPES: { key: HabitType; label: string }[] = [
   { key: "yesno", label: "Yes / No" },
@@ -298,6 +299,7 @@ function AddModal({ visible, editing, onClose }: AddModalProps) {
 
 export default function HabitsScreen() {
   const colors = useColors();
+  const font = useFont();
   const insets = useSafeAreaInsets();
   const { habits, deleteHabit, getStreak, getCompletionRate } = useHabits();
   const [showAdd, setShowAdd] = useState(false);
@@ -331,10 +333,10 @@ export default function HabitsScreen() {
           },
         ]}
       >
-        <Text style={[styles.screenTitle, { color: colors.primary }]}>
+        <Text style={[styles.screenTitle, { color: colors.primary, fontFamily: font.heading }]}>
           My Habits & Goals
         </Text>
-        <Text style={[styles.screenSub, { color: colors.mutedForeground }]}>
+        <Text style={[styles.screenSub, { color: colors.mutedForeground, fontFamily: font.body }]}>
           {habits.length} habit{habits.length !== 1 ? "s" : ""} tracked
         </Text>
         <View style={[styles.rule, { backgroundColor: colors.line }]} />

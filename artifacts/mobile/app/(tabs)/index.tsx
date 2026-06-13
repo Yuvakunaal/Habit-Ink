@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EntryStatus, toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
+import { useFont } from "@/hooks/useFont";
 
 function formatDisplayDate(date: Date): string {
   const months = [
@@ -24,31 +26,20 @@ function formatDisplayDate(date: Date): string {
   const day = date.getDate();
   const suffix = [11, 12, 13].includes(day % 100)
     ? "th"
-    : day % 10 === 1
-    ? "st"
-    : day % 10 === 2
-    ? "nd"
-    : day % 10 === 3
-    ? "rd"
+    : day % 10 === 1 ? "st"
+    : day % 10 === 2 ? "nd"
+    : day % 10 === 3 ? "rd"
     : "th";
   return `${months[date.getMonth()]} ${day}${suffix}, ${date.getFullYear()}`;
 }
 
-interface StatusBtnProps {
-  status: EntryStatus;
-  onPress: () => void;
-}
-
-function StatusBtn({ status, onPress }: StatusBtnProps) {
+function StatusBtn({ status, onPress }: { status: EntryStatus; onPress: () => void }) {
   const colors = useColors();
-  const icon =
-    status === "done" ? "check" : status === "missed" ? "x" : "minus";
+  const icon = status === "done" ? "check" : status === "missed" ? "x" : "minus";
   const color =
-    status === "done"
-      ? colors.success
-      : status === "missed"
-      ? colors.accent
-      : colors.mutedForeground;
+    status === "done" ? colors.success
+    : status === "missed" ? colors.accent
+    : colors.mutedForeground;
   return (
     <Pressable onPress={onPress} style={styles.statusBtn}>
       <Feather name={icon as any} size={18} color={color} />
@@ -58,15 +49,11 @@ function StatusBtn({ status, onPress }: StatusBtnProps) {
 
 export default function TodayScreen() {
   const colors = useColors();
+  const font = useFont();
   const insets = useSafeAreaInsets();
   const {
-    getHabitsForDate,
-    getEntry,
-    setEntryStatus,
-    setEntryActual,
-    updateJournal,
-    journals,
-    getDayNumber,
+    getHabitsForDate, getEntry, setEntryStatus, setEntryActual,
+    updateJournal, journals, getDayNumber,
   } = useHabits();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -74,50 +61,30 @@ export default function TodayScreen() {
 
   const dateKey = toDateKey(currentDate);
   const habitsToday = getHabitsForDate(dateKey);
-  const journal = journals[dateKey] ?? {
-    date: dateKey,
-    wakeUpTime: "",
-    notes: "",
-    wins: "",
-    challenges: "",
-  };
-  const isToday =
-    toDateKey(currentDate) === toDateKey(new Date());
+  const journal = journals[dateKey] ?? { date: dateKey, wakeUpTime: "", notes: "", wins: "", challenges: "" };
+  const isToday = toDateKey(currentDate) === toDateKey(new Date());
 
-  const doneCount = habitsToday.filter(
-    (h) => getEntry(h.id, dateKey)?.status === "done"
-  ).length;
-  const missedCount = habitsToday.filter(
-    (h) => getEntry(h.id, dateKey)?.status === "missed"
-  ).length;
+  const doneCount = habitsToday.filter((h) => getEntry(h.id, dateKey)?.status === "done").length;
+  const missedCount = habitsToday.filter((h) => getEntry(h.id, dateKey)?.status === "missed").length;
 
   const navigate = (delta: number) => {
     const d = new Date(currentDate);
     d.setDate(d.getDate() + delta);
-    if (d <= new Date()) {
-      setCurrentDate(d);
-      setEditingId(null);
-    }
+    if (d <= new Date()) { setCurrentDate(d); setEditingId(null); }
   };
 
   const cycleStatus = useCallback(
     (habitId: string, current?: EntryStatus) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const next: EntryStatus =
-        current === "done"
-          ? "missed"
-          : current === "missed"
-          ? "pending"
-          : "done";
+        current === "done" ? "missed" : current === "missed" ? "pending" : "done";
       setEntryStatus(habitId, dateKey, next);
     },
     [dateKey, setEntryStatus]
   );
 
-  const topPad =
-    Platform.OS === "web" ? 67 + insets.top : insets.top;
-  const botPad =
-    Platform.OS === "web" ? 34 + 84 : 100;
+  const topPad = Platform.OS === "web" ? 67 + insets.top : insets.top;
+  const botPad = Platform.OS === "web" ? 34 + 84 : 100;
 
   return (
     <KeyboardAvoidingView
@@ -125,54 +92,52 @@ export default function TodayScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: topPad + 16, paddingBottom: botPad },
-        ]}
+        contentContainerStyle={[styles.scroll, { paddingTop: topPad + 16, paddingBottom: botPad }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Title */}
+        {/* Header row */}
         <View style={styles.titleSection}>
           <Pressable onPress={() => navigate(-1)} style={styles.navBtn}>
             <Feather name="chevron-left" size={22} color={colors.mutedForeground} />
           </Pressable>
           <View style={styles.titleRow}>
             <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.titleText, { color: colors.primary }]}>
+            <Text style={{ fontFamily: font.heading, fontSize: font.size(30), color: colors.primary }}>
               Daily Tracker
             </Text>
             <View style={[styles.dot, { backgroundColor: colors.primary }]} />
           </View>
-          <Pressable
-            onPress={() => navigate(1)}
-            style={[styles.navBtn, { opacity: isToday ? 0 : 1 }]}
-            disabled={isToday}
-          >
-            <Feather name="chevron-right" size={22} color={colors.mutedForeground} />
-          </Pressable>
+          <View style={styles.headerRight}>
+            <Pressable onPress={() => navigate(1)} style={[styles.navBtn, { opacity: isToday ? 0 : 1 }]} disabled={isToday}>
+              <Feather name="chevron-right" size={22} color={colors.mutedForeground} />
+            </Pressable>
+            <Pressable onPress={() => router.push("/settings")} style={styles.gearBtn}>
+              <Feather name="settings" size={19} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
         </View>
         <View style={[styles.rule, { backgroundColor: colors.line }]} />
 
         {/* Date + Day */}
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <Text style={[styles.metaLabel, { color: colors.primary }]}>Date: </Text>
-            <Text style={[styles.metaValue, { color: colors.foreground }]}>
+            <Text style={{ fontFamily: font.label, fontSize: font.size(17), color: colors.primary }}>Date: </Text>
+            <Text style={{ fontFamily: font.body, fontSize: font.size(17), color: colors.foreground, flexShrink: 1 }}>
               {formatDisplayDate(currentDate)}
             </Text>
           </View>
           <View style={styles.metaItem}>
-            <Text style={[styles.metaLabel, { color: colors.primary }]}>Day: </Text>
-            <Text style={[styles.metaValue, { color: colors.foreground }]}>
+            <Text style={{ fontFamily: font.label, fontSize: font.size(17), color: colors.primary }}>Day: </Text>
+            <Text style={{ fontFamily: font.body, fontSize: font.size(17), color: colors.foreground }}>
               Day {getDayNumber()}
             </Text>
           </View>
         </View>
 
-        {/* Wake-up Time */}
+        {/* Wake-up time */}
         <View style={[styles.wakeRow, { borderBottomColor: colors.line }]}>
-          <Text style={[styles.metaLabel, { color: colors.primary }]}>
+          <Text style={{ fontFamily: font.label, fontSize: font.size(17), color: colors.primary }}>
             Wake-up Time:{"  "}
           </Text>
           <TextInput
@@ -180,77 +145,37 @@ export default function TodayScreen() {
             onChangeText={(t) => updateJournal(dateKey, { wakeUpTime: t })}
             placeholder="e.g. 6:30 AM"
             placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.wakeInput,
-              { color: colors.foreground, borderBottomColor: colors.border },
-            ]}
+            style={[styles.wakeInput, {
+              fontFamily: font.body, fontSize: font.size(17),
+              color: colors.foreground, borderBottomColor: colors.border,
+            }]}
           />
         </View>
 
-        {/* Table */}
+        {/* Habit table */}
         <View style={[styles.table, { borderColor: colors.border }]}>
-          {/* Header */}
-          <View
-            style={[
-              styles.tableRow,
-              {
-                backgroundColor: colors.muted,
-                borderBottomColor: colors.border,
-                borderBottomWidth: 1,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.colHabit,
-                styles.thText,
-                { color: colors.primary },
-              ]}
-            >
+          <View style={[styles.tableRow, { backgroundColor: colors.muted, borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
+            <Text style={[styles.colHabit, { fontFamily: font.label, fontSize: font.size(13), color: colors.primary, textAlign: "center" }]}>
               Habit / Goal
             </Text>
             <View style={[styles.vRule, { backgroundColor: colors.border }]} />
-            <Text
-              style={[
-                styles.colTarget,
-                styles.thText,
-                { color: colors.primary },
-              ]}
-            >
+            <Text style={[styles.colTarget, { fontFamily: font.label, fontSize: font.size(13), color: colors.primary, textAlign: "center" }]}>
               Target
             </Text>
             <View style={[styles.vRule, { backgroundColor: colors.border }]} />
-            <Text
-              style={[
-                styles.colStatus,
-                styles.thText,
-                { color: colors.primary },
-              ]}
-            >
+            <Text style={[styles.colStatus, { fontFamily: font.label, fontSize: font.size(13), color: colors.primary, textAlign: "center" }]}>
               Status
             </Text>
             <View style={[styles.vRule, { backgroundColor: colors.border }]} />
-            <Text
-              style={[
-                styles.colActual,
-                styles.thText,
-                { color: colors.primary },
-              ]}
-            >
+            <Text style={[styles.colActual, { fontFamily: font.label, fontSize: font.size(13), color: colors.primary, textAlign: "center" }]}>
               Actual
             </Text>
           </View>
 
           {habitsToday.length === 0 ? (
             <View style={styles.emptyTable}>
-              <Feather
-                name="book-open"
-                size={28}
-                color={colors.mutedForeground}
-              />
-              <Text
-                style={[styles.emptyText, { color: colors.mutedForeground }]}
-              >
+              <Feather name="book-open" size={28} color={colors.mutedForeground} />
+              <Text style={{ fontFamily: font.body, fontSize: font.size(17), color: colors.mutedForeground, textAlign: "center", lineHeight: 26 }}>
                 No habits today.{"\n"}Head to Habits tab to add some.
               </Text>
             </View>
@@ -260,87 +185,33 @@ export default function TodayScreen() {
               const isLast = idx === habitsToday.length - 1;
               const editing = editingId === habit.id;
               return (
-                <View
-                  key={habit.id}
-                  style={[
-                    styles.tableRow,
-                    {
-                      borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.colHabit,
-                      styles.tdText,
-                      { color: colors.foreground },
-                    ]}
-                    numberOfLines={2}
-                  >
+                <View key={habit.id} style={[styles.tableRow, { borderBottomWidth: isLast ? 0 : 1, borderBottomColor: colors.border }]}>
+                  <Text style={[styles.colHabit, { fontFamily: font.body, fontSize: font.size(14), color: colors.foreground }]} numberOfLines={2}>
                     {habit.name}
                   </Text>
-                  <View
-                    style={[styles.vRule, { backgroundColor: colors.border }]}
-                  />
-                  <Text
-                    style={[
-                      styles.colTarget,
-                      styles.tdText,
-                      { color: colors.mutedForeground },
-                    ]}
-                    numberOfLines={2}
-                  >
+                  <View style={[styles.vRule, { backgroundColor: colors.border }]} />
+                  <Text style={[styles.colTarget, { fontFamily: font.body, fontSize: font.size(14), color: colors.mutedForeground }]} numberOfLines={2}>
                     {habit.target || "Yes"}
                   </Text>
-                  <View
-                    style={[styles.vRule, { backgroundColor: colors.border }]}
-                  />
+                  <View style={[styles.vRule, { backgroundColor: colors.border }]} />
                   <View style={[styles.colStatus, styles.statusCenter]}>
-                    <StatusBtn
-                      status={entry?.status ?? "pending"}
-                      onPress={() =>
-                        cycleStatus(habit.id, entry?.status)
-                      }
-                    />
+                    <StatusBtn status={entry?.status ?? "pending"} onPress={() => cycleStatus(habit.id, entry?.status)} />
                   </View>
-                  <View
-                    style={[styles.vRule, { backgroundColor: colors.border }]}
-                  />
-                  <Pressable
-                    style={styles.colActual}
-                    onPress={() =>
-                      setEditingId(editing ? null : habit.id)
-                    }
-                  >
+                  <View style={[styles.vRule, { backgroundColor: colors.border }]} />
+                  <Pressable style={styles.colActual} onPress={() => setEditingId(editing ? null : habit.id)}>
                     {editing ? (
                       <TextInput
                         autoFocus
                         value={entry?.actual ?? ""}
-                        onChangeText={(t) =>
-                          setEntryActual(habit.id, dateKey, t)
-                        }
+                        onChangeText={(t) => setEntryActual(habit.id, dateKey, t)}
                         onBlur={() => setEditingId(null)}
                         placeholder="Actual..."
                         placeholderTextColor={colors.mutedForeground}
-                        style={[
-                          styles.actualInput,
-                          { color: colors.foreground },
-                        ]}
+                        style={{ fontFamily: font.body, fontSize: font.size(14), color: colors.foreground, padding: 0, flex: 1 }}
                         multiline
                       />
                     ) : (
-                      <Text
-                        style={[
-                          styles.tdText,
-                          {
-                            color: entry?.actual
-                              ? colors.foreground
-                              : colors.mutedForeground,
-                          },
-                        ]}
-                        numberOfLines={2}
-                      >
+                      <Text style={{ fontFamily: font.body, fontSize: font.size(14), color: entry?.actual ? colors.foreground : colors.mutedForeground }} numberOfLines={2}>
                         {entry?.actual || "—"}
                       </Text>
                     )}
@@ -351,24 +222,27 @@ export default function TodayScreen() {
           )}
         </View>
 
-        {/* Summary */}
+        {/* Summary strip */}
         {habitsToday.length > 0 && (
-          <View style={styles.summaryBlock}>
-            <View style={styles.summaryCol}>
-              <Text
-                style={[styles.sectionLabel, { color: colors.primary }]}
-              >
-                Summary:
+          <View style={[styles.summaryStrip, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.summaryItem}>
+              <Feather name="check-circle" size={16} color={colors.success} />
+              <Text style={{ fontFamily: font.label, fontSize: font.size(15), color: colors.success, marginLeft: 4 }}>
+                {doneCount} done
               </Text>
-              <Text
-                style={[styles.summaryLine, { color: colors.foreground }]}
-              >
-                • Goals Achieved: {doneCount} / {habitsToday.length}
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.summaryItem}>
+              <Feather name="x-circle" size={16} color={colors.accent} />
+              <Text style={{ fontFamily: font.label, fontSize: font.size(15), color: colors.accent, marginLeft: 4 }}>
+                {missedCount} missed
               </Text>
-              <Text
-                style={[styles.summaryLine, { color: colors.foreground }]}
-              >
-                • Goals Missed: {missedCount} / {habitsToday.length}
+            </View>
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.summaryItem}>
+              <Feather name="clock" size={16} color={colors.mutedForeground} />
+              <Text style={{ fontFamily: font.body, fontSize: font.size(15), color: colors.mutedForeground, marginLeft: 4 }}>
+                {habitsToday.length - doneCount - missedCount} pending
               </Text>
             </View>
           </View>
@@ -377,7 +251,7 @@ export default function TodayScreen() {
         <View style={[styles.rule, { backgroundColor: colors.line, marginVertical: 16 }]} />
 
         {/* Notes */}
-        <Text style={[styles.sectionLabel, { color: colors.primary }]}>
+        <Text style={{ fontFamily: font.label, fontSize: font.size(20), color: colors.primary, marginBottom: 6 }}>
           Notes:
         </Text>
         <TextInput
@@ -386,20 +260,13 @@ export default function TodayScreen() {
           placeholder="Today's thoughts..."
           placeholderTextColor={colors.mutedForeground}
           multiline
-          style={[
-            styles.journal,
-            {
-              color: colors.foreground,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-            },
-          ]}
+          style={[styles.journal, {
+            fontFamily: font.body, fontSize: font.size(16),
+            color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card,
+          }]}
         />
 
-        {/* Wins */}
-        <Text
-          style={[styles.sectionLabel, { color: colors.primary, marginTop: 12 }]}
-        >
+        <Text style={{ fontFamily: font.label, fontSize: font.size(20), color: colors.primary, marginBottom: 6, marginTop: 12 }}>
           Wins & Reflections:
         </Text>
         <TextInput
@@ -408,31 +275,21 @@ export default function TodayScreen() {
           placeholder="What went well?"
           placeholderTextColor={colors.mutedForeground}
           multiline
-          style={[
-            styles.journal,
-            {
-              color: colors.foreground,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-            },
-          ]}
+          style={[styles.journal, {
+            fontFamily: font.body, fontSize: font.size(16),
+            color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card,
+          }]}
         />
-
         <TextInput
           value={journal.challenges}
           onChangeText={(t) => updateJournal(dateKey, { challenges: t })}
           placeholder="What was challenging?"
           placeholderTextColor={colors.mutedForeground}
           multiline
-          style={[
-            styles.journal,
-            {
-              color: colors.foreground,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-              marginTop: 8,
-            },
-          ]}
+          style={[styles.journal, {
+            fontFamily: font.body, fontSize: font.size(16),
+            color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card, marginTop: 8,
+          }]}
         />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -442,97 +299,29 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 16 },
-  titleSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
+  titleSection: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   navBtn: { padding: 8, width: 36, alignItems: "center" },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-    justifyContent: "center",
-  },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 4 },
+  gearBtn: { padding: 8, width: 36, alignItems: "center" },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, justifyContent: "center" },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  titleText: { fontFamily: "Caveat_700Bold", fontSize: 30 },
   rule: { height: 1, marginBottom: 12 },
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    marginBottom: 8,
-    gap: 4,
-  },
+  metaRow: { flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", marginBottom: 8, gap: 4 },
   metaItem: { flexDirection: "row", alignItems: "center", flexShrink: 1 },
-  metaLabel: { fontFamily: "Caveat_700Bold", fontSize: 17 },
-  metaValue: { fontFamily: "Caveat_400Regular", fontSize: 17, flexShrink: 1 },
-  wakeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingBottom: 10,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-  },
-  wakeInput: {
-    flex: 1,
-    fontFamily: "Caveat_400Regular",
-    fontSize: 17,
-    borderBottomWidth: 1,
-    paddingVertical: 2,
-  },
-  table: {
-    borderWidth: 1,
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-  tableRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    minHeight: 40,
-  },
+  wakeRow: { flexDirection: "row", alignItems: "center", paddingBottom: 10, marginBottom: 16, borderBottomWidth: 1 },
+  wakeInput: { flex: 1, borderBottomWidth: 1, paddingVertical: 2 },
+  table: { borderWidth: 1, borderRadius: 4, overflow: "hidden", marginBottom: 12 },
+  tableRow: { flexDirection: "row", alignItems: "stretch", minHeight: 40 },
   vRule: { width: 1 },
   colHabit: { flex: 4, paddingHorizontal: 6, paddingVertical: 8 },
   colTarget: { flex: 2.5, paddingHorizontal: 4, paddingVertical: 8 },
   colStatus: { width: 44, paddingVertical: 8 },
   statusCenter: { alignItems: "center", justifyContent: "center" },
   colActual: { flex: 3, paddingHorizontal: 6, paddingVertical: 8 },
-  thText: { fontFamily: "Caveat_700Bold", fontSize: 13, textAlign: "center" },
-  tdText: { fontFamily: "Caveat_400Regular", fontSize: 14 },
   statusBtn: { padding: 4 },
-  actualInput: {
-    fontFamily: "Caveat_400Regular",
-    fontSize: 14,
-    padding: 0,
-    flex: 1,
-  },
   emptyTable: { padding: 28, alignItems: "center", gap: 10 },
-  emptyText: {
-    fontFamily: "Caveat_400Regular",
-    fontSize: 17,
-    textAlign: "center",
-    lineHeight: 26,
-  },
-  summaryBlock: { flexDirection: "row", marginBottom: 4 },
-  summaryCol: { flex: 1 },
-  sectionLabel: { fontFamily: "Caveat_700Bold", fontSize: 20, marginBottom: 6 },
-  summaryLine: {
-    fontFamily: "Caveat_400Regular",
-    fontSize: 16,
-    marginLeft: 4,
-    marginBottom: 2,
-  },
-  journal: {
-    borderWidth: 1,
-    borderRadius: 4,
-    padding: 10,
-    minHeight: 80,
-    textAlignVertical: "top",
-    fontFamily: "Caveat_400Regular",
-    fontSize: 16,
-    lineHeight: 24,
-  },
+  summaryStrip: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 8, marginBottom: 4, paddingVertical: 10 },
+  summaryItem: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  summaryDivider: { width: 1, height: 20 },
+  journal: { borderWidth: 1, borderRadius: 4, padding: 10, minHeight: 80, textAlignVertical: "top", lineHeight: 24 },
 });
