@@ -558,9 +558,7 @@ export default function HabitsScreen() {
   const [editing, setEditing] = useState<Habit | undefined>();
 
   const topPad = insets.top;
-  const TAB_BAR_HEIGHT = 60;
-  const fabBottom = insets.bottom + TAB_BAR_HEIGHT + 12;
-  const listPadBottom = insets.bottom + TAB_BAR_HEIGHT + 90;
+  const listPadBottom = insets.bottom + 24;
 
   const confirmDelete = (id: string, name: string) => {
     Alert.alert("Remove Habit", `Remove "${name}" from your journal?`, [
@@ -585,27 +583,57 @@ export default function HabitsScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Header */}
       <View style={{
-        paddingTop: topPad + 16,
-        paddingBottom: 16,
+        paddingTop: topPad + 12,
+        paddingBottom: 12,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
         borderBottomColor: colors.line,
+        flexDirection: "row",
+        alignItems: "center",
       }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
-          <Text style={{ fontFamily: font.heading, fontSize: font.size(28), color: colors.primary }}>
-            My Habits
+        {/* Left spacer to balance the button */}
+        <View style={{ width: 44 }} />
+
+        {/* Centred title */}
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+            <Text style={{ fontFamily: font.heading, fontSize: font.size(26), color: colors.primary }}>
+              My Habits
+            </Text>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+          </View>
+          <Text style={{
+            fontFamily: font.body, fontSize: font.size(12),
+            color: colors.mutedForeground, marginTop: 3,
+          }}>
+            {habits.length === 0
+              ? "Add your first habit"
+              : `${habits.length} habit${habits.length === 1 ? "" : "s"} · long-press to remove`}
           </Text>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
         </View>
-        <Text style={{
-          fontFamily: font.body, fontSize: font.size(13),
-          color: colors.mutedForeground, textAlign: "center", marginTop: 4,
-        }}>
-          {habits.length === 0
-            ? "Tap below to add your first habit"
-            : `${habits.length} habit${habits.length === 1 ? "" : "s"} tracked · Long-press to remove`}
-        </Text>
+
+        {/* Add button top-right */}
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setEditing(undefined);
+            setShowAdd(true);
+          }}
+          activeOpacity={0.8}
+          style={{
+            width: 44, height: 44, borderRadius: 22,
+            backgroundColor: colors.primary,
+            alignItems: "center", justifyContent: "center",
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            elevation: 5,
+          }}
+        >
+          <Feather name="plus" size={22} color={colors.primaryForeground} />
+        </TouchableOpacity>
       </View>
 
       {/* List */}
@@ -633,7 +661,7 @@ export default function HabitsScreen() {
               fontFamily: font.body, fontSize: font.size(15),
               color: colors.mutedForeground, textAlign: "center", lineHeight: 24,
             }}>
-              Start tracking your habits and goals — tap the button below to add your first one.
+              Start tracking your habits and goals — tap the + button above to add your first one.
             </Text>
           </View>
         ) : (
@@ -647,38 +675,6 @@ export default function HabitsScreen() {
           ))
         )}
       </ScrollView>
-
-      {/* FAB */}
-      <View style={{ position: "absolute", left: 0, right: 0, bottom: fabBottom, alignItems: "center" }}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setEditing(undefined);
-            setShowAdd(true);
-          }}
-          style={{
-            flexDirection: "row", alignItems: "center",
-            paddingHorizontal: 28, paddingVertical: 15,
-            borderRadius: 50,
-            backgroundColor: colors.primary,
-            shadowColor: colors.primary,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.35,
-            shadowRadius: 10,
-            elevation: 8,
-            gap: 8,
-          }}
-        >
-          <Feather name="plus" size={20} color={colors.primaryForeground} />
-          <Text style={{
-            fontFamily: font.label, fontSize: font.size(16),
-            color: colors.primaryForeground, fontWeight: "700",
-          }}>
-            Add Habit
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       <AddModal visible={showAdd} editing={editing} onClose={closeModal} />
     </View>
