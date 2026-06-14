@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="web/public/logo.png" alt="Habit Ink" width="88" height="88" />
+  <img src="web/public/logo-no-bg.png" alt="Habit Ink" width="88" height="88" />
 
   <h1>Habit Ink</h1>
 
