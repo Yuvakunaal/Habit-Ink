@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Check, X, CheckCircle, Hash, Slash, Clock, Edit3 } from "lucide-react";
+import { Plus, Pencil, Check, X, CheckCircle, Hash, Slash, Clock, Edit3, Archive, ArchiveRestore, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Habit, HabitType, ScheduleType, toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
@@ -60,9 +60,11 @@ interface AddModalProps {
   editing?: Habit;
   onClose: () => void;
   onDelete?: (id: string) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
 }
 
-function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
+function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive }: AddModalProps) {
   const colors = useColors();
   const font = useFont();
   const { addHabit, updateHabit } = useHabits();
@@ -70,9 +72,9 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
 
   const [name, setName] = useState("");
   const [type, setType] = useState<HabitType>("yesno");
-  const [target, setTarget] = useState("");       // for time / custom types
-  const [numAmount, setNumAmount] = useState(""); // number: the value part (e.g. "10000")
-  const [numUnit, setNumUnit] = useState("");     // number: the unit part  (e.g. "steps")
+  const [target, setTarget] = useState("");
+  const [numAmount, setNumAmount] = useState("");
+  const [numUnit, setNumUnit] = useState("");
   const [schedule, setSchedule] = useState<ScheduleType>("daily");
   const [customDays, setCustomDays] = useState<number[]>([1, 3, 5]);
   const [emoji, setEmoji] = useState("✅");
@@ -91,7 +93,6 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
     setType(editType);
 
     if (editType === "number" || editType === "decimal") {
-      // Parse "10000 steps" or "7.5 km" → amount + unit
       const m = editTarget.match(/^([\d.]+)\s*(.*)$/);
       if (m) { setNumAmount(m[1]); setNumUnit(m[2].trim()); }
       else { setNumAmount(""); setNumUnit(editTarget); }
@@ -107,7 +108,6 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
     }
   }, [visible, editing]);
 
-  // When user switches type, clear stale target values
   const handleTypeChange = (t: HabitType) => {
     setType(t);
     setTarget("");
@@ -241,7 +241,7 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
           })}
         </div>
 
-        {/* Target — varies by type */}
+        {/* Target */}
         {type === "yesno" ? (
           <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.muted, borderRadius: 10, padding: "10px 14px", marginBottom: 20 }}>
             <Check size={14} color={colors.success} />
@@ -262,11 +262,8 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
                     return;
                   }
                   const allow = ["Backspace","Delete","ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Tab","Enter","Home","End"];
-                  const isDecimalAllowed = type === "decimal";
-                  const allowedChars = isDecimalAllowed ? /^[0-9.]$/ : /^[0-9]$/;
-                  if (!allow.includes(e.key) && !allowedChars.test(e.key) && !e.ctrlKey && !e.metaKey) {
-                    e.preventDefault();
-                  }
+                  const allowedChars = type === "decimal" ? /^[0-9.]$/ : /^[0-9]$/;
+                  if (!allow.includes(e.key) && !allowedChars.test(e.key) && !e.ctrlKey && !e.metaKey) e.preventDefault();
                   if (e.key === "." && numAmount.includes(".")) e.preventDefault();
                 }}
                 onChange={(e) => setNumAmount(e.target.value)}
@@ -308,7 +305,6 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
           })}
         </div>
 
-        {/* Custom day picker */}
         {schedule === "custom" && (
           <>
             <div style={{ display: "flex", flexDirection: "row", gap: 8, marginBottom: noDaysSelected ? 6 : 22 }}>
@@ -338,18 +334,39 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
           </span>
         </button>
 
-        {/* Delete — only in edit mode */}
+        {/* Archive / Unarchive */}
+        {editing && (
+          editing.archived ? (
+            <button
+              onClick={() => { onUnarchive?.(editing.id); onClose(); }}
+              style={{ marginTop: 10, width: "100%", paddingTop: 12, paddingBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "none", border: `1px solid ${colors.success}`, borderRadius: 12, cursor: "pointer" }}
+            >
+              <ArchiveRestore size={15} color={colors.success} />
+              <span style={{ ...font.label, fontSize: font.size(15), color: colors.success }}>Restore Habit</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => { onArchive?.(editing.id); onClose(); }}
+              style={{ marginTop: 10, width: "100%", paddingTop: 12, paddingBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "none", border: `1px solid ${colors.primary}30`, borderRadius: 12, cursor: "pointer" }}
+            >
+              <Archive size={15} color={colors.mutedForeground} />
+              <span style={{ ...font.label, fontSize: font.size(15), color: colors.mutedForeground }}>Archive Habit</span>
+            </button>
+          )
+        )}
+
+        {/* Permanent Delete */}
         {editing && onDelete && (
           <button
             onClick={() => {
-              if (window.confirm(`Remove "${editing.name}" from your journal?`)) {
+              if (window.confirm(`Permanently delete "${editing.name}"? This cannot be undone.`)) {
                 onDelete(editing.id);
                 onClose();
               }
             }}
-            style={{ marginTop: 10, width: "100%", paddingTop: 12, paddingBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "none", border: `1px solid ${colors.destructive}`, borderRadius: 12, cursor: "pointer" }}
+            style={{ marginTop: 8, width: "100%", paddingTop: 10, paddingBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "none", border: "none", cursor: "pointer" }}
           >
-            <span style={{ ...font.label, fontSize: font.size(15), color: colors.destructive }}>Remove Habit</span>
+            <span style={{ ...font.body, fontSize: font.size(13), color: colors.destructive, textDecoration: "underline" }}>Delete permanently</span>
           </button>
         )}
       </div>
@@ -357,7 +374,7 @@ function AddModal({ visible, editing, onClose, onDelete }: AddModalProps) {
   );
 }
 
-function HabitCard({ habit, onEdit, onDelete, inGrid }: { habit: Habit; onEdit: () => void; onDelete: () => void; inGrid?: boolean }) {
+function HabitCard({ habit, onEdit, inGrid }: { habit: Habit; onEdit: () => void; inGrid?: boolean }) {
   const colors = useColors();
   const font = useFont();
   const { getStreak, getCompletionRate } = useHabits();
@@ -377,6 +394,7 @@ function HabitCard({ habit, onEdit, onDelete, inGrid }: { habit: Habit; onEdit: 
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onEdit}
       style={{
         backgroundColor: colors.card,
         borderRadius: 16,
@@ -390,50 +408,56 @@ function HabitCard({ habit, onEdit, onDelete, inGrid }: { habit: Habit; onEdit: 
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
         cursor: "pointer",
       }}
-      onClick={onEdit}
     >
-      <div style={{ height: 4, backgroundColor: accentColor }} />
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", padding: 14, gap: 14 }}>
-        {/* Emoji bubble */}
-        <div style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: accentColor + "18", border: `1.5px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <span style={{ fontSize: 26 }}>{habit.emoji ?? "✅"}</span>
-        </div>
-
-        {/* Main content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0, lineHeight: 1.3 }}>
-            {habit.name}
-          </p>
-          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10, marginTop: 4 }}>
-            <span style={{ ...font.body, fontSize: font.size(11), color: accentColor, fontWeight: 600, backgroundColor: accentColor + "18", borderRadius: 8, paddingLeft: 8, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
-              {SCHEDULE_DESCRIPTIONS[habit.schedule]}
-            </span>
-            {habit.target ? (
-              <span style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, backgroundColor: colors.muted, borderRadius: 8, paddingLeft: 8, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
-                {habit.target}
+      <div style={{ flex: 1, overflow: "hidden" }}>
+        <div style={{ height: 4, backgroundColor: accentColor }} />
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", padding: 14, gap: 14 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: accentColor + "18", border: `1.5px solid ${accentColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 26 }}>{habit.emoji ?? "✅"}</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0, lineHeight: 1.3 }}>
+              {habit.name}
+            </p>
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4, marginTop: 4 }}>
+              <span style={{ ...font.body, fontSize: font.size(11), color: accentColor, fontWeight: 600, backgroundColor: accentColor + "18", borderRadius: 8, paddingLeft: 8, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
+                {SCHEDULE_DESCRIPTIONS[habit.schedule]}
               </span>
-            ) : null}
+              {habit.target ? (
+                <span style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, backgroundColor: colors.muted, borderRadius: 8, paddingLeft: 8, paddingRight: 8, paddingTop: 2, paddingBottom: 2 }}>
+                  {habit.target}
+                </span>
+              ) : null}
+            </div>
+            {(() => {
+              const startD = new Date(habit.startDate + "T12:00:00");
+              const age = Math.floor((Date.now() - startD.getTime()) / (1000 * 60 * 60 * 24));
+              if (age < 1) return null;
+              return (
+                <p style={{ ...font.body, fontSize: font.size(10), color: colors.mutedForeground, margin: "0 0 5px 0", opacity: 0.75 }}>
+                  {age === 1 ? "Started yesterday" : `Running for ${age} day${age !== 1 ? "s" : ""}`}
+                </p>
+              );
+            })()}
+            <div style={{ height: 5, borderRadius: 3, backgroundColor: colors.muted, overflow: "hidden" }}>
+              <div style={{ height: 5, borderRadius: 3, width: `${displayRate}%`, backgroundColor: displayRate >= 80 ? colors.success : displayRate >= 50 ? accentColor : colors.accent, transition: "width 0.6s ease-out" }} />
+            </div>
+            <p style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, marginTop: 4, marginBottom: 0 }}>
+              {rate}% last 30 days
+            </p>
           </div>
-          <div style={{ height: 5, borderRadius: 3, backgroundColor: colors.muted, overflow: "hidden" }}>
-            <div style={{ height: 5, borderRadius: 3, width: `${displayRate}%`, backgroundColor: displayRate >= 80 ? colors.success : displayRate >= 50 ? accentColor : colors.accent, transition: "width 0.6s ease-out" }} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <div style={{ backgroundColor: streak > 0 ? accentColor + "20" : colors.muted, borderRadius: 12, paddingLeft: 8, paddingRight: 8, paddingTop: 5, paddingBottom: 5, display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <span style={{ fontSize: 14 }}>🔥</span>
+              <span style={{ ...font.heading, fontSize: font.size(15), color: streak > 0 ? accentColor : colors.mutedForeground, marginTop: 1 }}>{streak}</span>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.muted, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${colors.border}`, cursor: "pointer" }}
+            >
+              <Pencil size={13} color={colors.mutedForeground} />
+            </button>
           </div>
-          <p style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, marginTop: 4, marginBottom: 0 }}>
-            {rate}% last 30 days
-          </p>
-        </div>
-
-        {/* Streak + edit */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{ backgroundColor: streak > 0 ? accentColor + "20" : colors.muted, borderRadius: 12, paddingLeft: 8, paddingRight: 8, paddingTop: 5, paddingBottom: 5, display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span style={{ fontSize: 14 }}>🔥</span>
-            <span style={{ ...font.heading, fontSize: font.size(15), color: streak > 0 ? accentColor : colors.mutedForeground, marginTop: 1 }}>{streak}</span>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.muted, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${colors.border}`, cursor: "pointer" }}
-          >
-            <Pencil size={13} color={colors.mutedForeground} />
-          </button>
         </div>
       </div>
     </div>
@@ -443,59 +467,37 @@ function HabitCard({ habit, onEdit, onDelete, inGrid }: { habit: Habit; onEdit: 
 export default function HabitsScreen() {
   const colors = useColors();
   const font = useFont();
-  const { habits, deleteHabit, getStreak } = useHabits();
+  const { habits, deleteHabit, updateHabit } = useHabits();
   const isWide = useIsWide();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Habit | undefined>();
+  const [showArchived, setShowArchived] = useState(false);
 
-  const confirmDelete = (id: string, name: string) => {
-    if (window.confirm(`Remove "${name}" from your journal?`)) {
-      deleteHabit(id);
-    }
-  };
+  const activeHabits = habits.filter(h => !h.archived);
+  const archivedHabits = habits.filter(h => h.archived);
 
   const openEdit = (habit: Habit) => { setEditing(habit); setShowAdd(true); };
   const closeModal = () => { setShowAdd(false); setEditing(undefined); };
 
-  const sorted = [...habits].sort((a, b) => getStreak(b.id) - getStreak(a.id));
+  const handleArchive = (id: string) => updateHabit(id, { archived: true });
+  const handleUnarchive = (id: string) => updateHabit(id, { archived: false });
 
   const emptyState = isWide ? (
-    /* Desktop guided onboarding */
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      paddingTop: 60,
-      paddingBottom: 60,
-      maxWidth: 620,
-      margin: "0 auto",
-    }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 60, paddingBottom: 60, maxWidth: 620, margin: "0 auto" }}>
       <span style={{ fontSize: 56, marginBottom: 20 }}>📓</span>
       <p style={{ ...font.heading, fontSize: font.size(26), color: colors.foreground, marginBottom: 8, textAlign: "center" }}>
-        Welcome to Habit Journal
+        Welcome to Habit Ink
       </p>
       <p style={{ ...font.body, fontSize: font.size(15), color: colors.mutedForeground, textAlign: "center", lineHeight: 1.6, marginBottom: 36 }}>
         Track your habits and build routines that stick — one day at a time.
       </p>
-
-      {/* 3 steps */}
       <div style={{ display: "flex", flexDirection: "row", gap: 16, width: "100%", marginBottom: 40 }}>
         {[
-          { num: "1", emoji: "➕", title: "Add a habit", desc: "Set a goal and pick a schedule" },
-          { num: "2", emoji: "✓", title: "Track daily", desc: "Mark done or missed each day" },
-          { num: "3", emoji: "📊", title: "See progress", desc: "Charts, streaks & insights" },
+          { emoji: "➕", title: "Add a habit", desc: "Set a goal and pick a schedule" },
+          { emoji: "✓", title: "Track daily", desc: "Mark done or missed each day" },
+          { emoji: "📊", title: "See progress", desc: "Charts, streaks & insights" },
         ].map((step, i) => (
-          <div key={i} style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            padding: "20px 16px",
-            backgroundColor: colors.card,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 14,
-            textAlign: "center",
-          }}>
+          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 16px", backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 14, textAlign: "center" }}>
             <div style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + "18", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
               <span style={{ fontSize: 22 }}>{step.emoji}</span>
             </div>
@@ -504,31 +506,12 @@ export default function HabitsScreen() {
           </div>
         ))}
       </div>
-
-      <button
-        onClick={() => { setEditing(undefined); setShowAdd(true); }}
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          paddingLeft: 28,
-          paddingRight: 28,
-          paddingTop: 14,
-          paddingBottom: 14,
-          borderRadius: 12,
-          backgroundColor: colors.primary,
-          border: "none",
-          cursor: "pointer",
-          boxShadow: `0 4px 12px ${colors.primary}40`,
-        }}
-      >
+      <button onClick={() => { setEditing(undefined); setShowAdd(true); }} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10, paddingLeft: 28, paddingRight: 28, paddingTop: 14, paddingBottom: 14, borderRadius: 12, backgroundColor: colors.primary, border: "none", cursor: "pointer", boxShadow: `0 4px 12px ${colors.primary}40` }}>
         <Plus size={20} color={colors.primaryForeground} />
         <span style={{ ...font.label, fontSize: font.size(16), color: colors.primaryForeground }}>Add Your First Habit</span>
       </button>
     </div>
   ) : (
-    /* Mobile empty state — unchanged */
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 80, paddingBottom: 80, paddingLeft: 32, paddingRight: 32 }}>
       <div style={{ width: 90, height: 90, borderRadius: 45, backgroundColor: colors.muted, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
         <span style={{ fontSize: 44 }}>📓</span>
@@ -548,7 +531,7 @@ export default function HabitsScreen() {
           <div>
             <span style={{ ...font.heading, fontSize: font.size(28), color: colors.primary, display: "block" }}>My Habits</span>
             <span style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground, marginTop: 2, display: "block" }}>
-              {habits.length === 0 ? "Add your first habit to get started" : `${habits.length} habit${habits.length === 1 ? "" : "s"} tracked · click any card to edit`}
+              {activeHabits.length === 0 ? "Add your first habit to get started" : `${activeHabits.length} habit${activeHabits.length === 1 ? "" : "s"} tracked · click to edit`}
             </span>
           </div>
           <button
@@ -569,7 +552,7 @@ export default function HabitsScreen() {
               <div style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
             </div>
             <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, marginTop: 3 }}>
-              {habits.length === 0 ? "Add your first habit" : `${habits.length} habit${habits.length === 1 ? "" : "s"} · click to edit`}
+              {activeHabits.length === 0 ? "Add your first habit" : `${activeHabits.length} habit${activeHabits.length === 1 ? "" : "s"} · click to edit`}
             </span>
           </div>
           <button
@@ -584,23 +567,58 @@ export default function HabitsScreen() {
       {/* List */}
       <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
         <div style={{ maxWidth: isWide ? 1080 : undefined, margin: isWide ? "0 auto" : undefined, padding: isWide ? "16px 28px 32px" : "16px 16px 32px" }}>
-          {habits.length === 0 ? emptyState : (
-            <div style={isWide ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" } : {}}>
-              {sorted.map((habit) => (
-                <HabitCard
-                  key={habit.id}
-                  habit={habit}
-                  inGrid={isWide}
-                  onEdit={() => openEdit(habit)}
-                  onDelete={() => confirmDelete(habit.id, habit.name)}
-                />
-              ))}
-            </div>
+          {activeHabits.length === 0 && archivedHabits.length === 0 ? emptyState : (
+            <>
+              {/* Active habits */}
+              <div style={isWide ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" } : {}}>
+                {activeHabits.map((habit) => (
+                  <HabitCard
+                    key={habit.id}
+                    habit={habit}
+                    inGrid={isWide}
+                    onEdit={() => openEdit(habit)}
+                  />
+                ))}
+              </div>
+
+              {/* Archived section */}
+              {archivedHabits.length > 0 && (
+                <div style={{ marginTop: activeHabits.length > 0 ? 20 : 0 }}>
+                  <button
+                    onClick={() => setShowArchived(s => !s)}
+                    style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: "6px 0", marginBottom: 10 }}
+                  >
+                    <Archive size={14} color={colors.mutedForeground} />
+                    <span style={{ ...font.label, fontSize: font.size(13), color: colors.mutedForeground }}>Archived ({archivedHabits.length})</span>
+                    {showArchived ? <ChevronUp size={14} color={colors.mutedForeground} /> : <ChevronDown size={14} color={colors.mutedForeground} />}
+                  </button>
+                  {showArchived && (
+                    <div style={{ opacity: 0.65, ...(isWide ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 } : {}) }}>
+                      {archivedHabits.map(habit => (
+                        <HabitCard
+                          key={habit.id}
+                          habit={habit}
+                          inGrid={isWide}
+                          onEdit={() => openEdit(habit)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      <AddModal visible={showAdd} editing={editing} onClose={closeModal} onDelete={deleteHabit} />
+      <AddModal
+        visible={showAdd}
+        editing={editing}
+        onClose={closeModal}
+        onDelete={deleteHabit}
+        onArchive={handleArchive}
+        onUnarchive={handleUnarchive}
+      />
     </div>
   );
 }

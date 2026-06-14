@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, Feather } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { THEMES, ThemeName } from "@/constants/themes";
@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   const font = useFont();
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
-  const { theme, fontStyle, fontSize, setTheme, setFontStyle, setFontSize, reset } = useSettings();
+  const { theme, fontStyle, fontSize, customQuoteText, customQuoteAuthor, setTheme, setFontStyle, setFontSize, setCustomQuoteText, setCustomQuoteAuthor, reset } = useSettings();
   const { showToast } = useToast();
 
   const handleTheme = (key: ThemeName) => {
@@ -174,10 +174,48 @@ export default function SettingsScreen() {
 
         <div style={{ height: 1, backgroundColor: colors.line }} />
 
+        {/* Custom Quote */}
+        <Section title="Daily Quote">
+          <p style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground, margin: "0 0 12px" }}>
+            Shown on Today's screen. Leave blank to use the built-in rotating quotes.
+          </p>
+          <input
+            value={customQuoteText}
+            onChange={e => setCustomQuoteText(e.target.value)}
+            placeholder="Type your favourite quote…"
+            maxLength={220}
+            style={{ ...font.body, fontSize: font.size(15), color: colors.foreground, border: `1.5px solid ${colors.border}`, borderRadius: 10, padding: "11px 14px", backgroundColor: colors.card, width: "100%", outline: "none", display: "block", marginBottom: 10 }}
+          />
+          <input
+            value={customQuoteAuthor}
+            onChange={e => setCustomQuoteAuthor(e.target.value)}
+            placeholder="Author (optional)"
+            maxLength={60}
+            style={{ ...font.body, fontSize: font.size(14), color: colors.foreground, border: `1.5px solid ${colors.border}`, borderRadius: 10, padding: "10px 14px", backgroundColor: colors.card, width: "100%", outline: "none", display: "block", marginBottom: customQuoteText.trim() ? 12 : 0 }}
+          />
+          {customQuoteText.trim() && (
+            <div style={{ border: `1px solid ${colors.border}`, borderLeft: `3px solid ${colors.primary}`, borderRadius: 10, padding: 14, backgroundColor: colors.card }}>
+              <Feather size={13} color={colors.primary} style={{ marginBottom: 6, display: "block" }} />
+              <p style={{ ...font.body, fontSize: font.size(14), color: colors.foreground, fontStyle: "italic", margin: 0, lineHeight: 1.5 }}>"{customQuoteText.trim()}"</p>
+              <p style={{ ...font.label, fontSize: font.size(12), color: colors.primary, marginTop: 6, marginBottom: 0 }}>— {customQuoteAuthor.trim() || "You"}</p>
+            </div>
+          )}
+          {customQuoteText.trim() && (
+            <button
+              onClick={() => { setCustomQuoteText(""); setCustomQuoteAuthor(""); }}
+              style={{ marginTop: 8, background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}
+            >
+              <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, textDecoration: "underline" }}>Clear custom quote</span>
+            </button>
+          )}
+        </Section>
+
+        <div style={{ height: 1, backgroundColor: colors.line }} />
+
         {/* About */}
         <Section title="About">
           <div style={{ border: `1px solid ${colors.border}`, borderRadius: 10, padding: 16, backgroundColor: colors.card, display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground }}>Habit Journal</span>
+            <span style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground }}>Habit Ink</span>
             <p style={{ ...font.body, fontSize: font.size(14), color: colors.mutedForeground, lineHeight: 1.4, margin: 0 }}>
               A personal notebook for tracking your habits and goals — one day at a time.
             </p>

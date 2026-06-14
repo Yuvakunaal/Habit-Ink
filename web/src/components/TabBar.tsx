@@ -9,17 +9,30 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  BookMarked,
 } from "lucide-react";
 import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useSettings } from "@/context/SettingsContext";
 import { toDateKey, useHabits } from "@/context/HabitContext";
 
+// Desktop sidebar nav (includes Journal)
+const SIDEBAR_TABS = [
+  { path: "/", label: "Today", Icon: BookOpen },
+  { path: "/habits", label: "Habits", Icon: CheckSquare2 },
+  { path: "/calendar", label: "Calendar", Icon: Calendar },
+  { path: "/progress", label: "Progress", Icon: TrendingUp },
+  { path: "/journal", label: "Journal", Icon: BookMarked },
+  { path: "/profile", label: "Profile", Icon: User },
+];
+
+// Mobile bottom bar
 const TABS = [
   { path: "/", label: "Today", Icon: BookOpen },
   { path: "/habits", label: "Habits", Icon: CheckSquare2 },
   { path: "/calendar", label: "Calendar", Icon: Calendar },
   { path: "/progress", label: "Progress", Icon: TrendingUp },
+  { path: "/journal", label: "Journal", Icon: BookMarked },
   { path: "/profile", label: "Profile", Icon: User },
 ];
 
@@ -133,27 +146,16 @@ export function Sidebar() {
           transition: "padding 0.25s ease",
         }}
       >
-        <div
+        <img
+          src="/favicon.png"
+          alt="Habit Ink"
           style={{
             width: 38,
             height: 38,
-            borderRadius: 11,
-            backgroundColor: colors.primary,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            objectFit: "contain",
             flexShrink: 0,
-            boxShadow: `0 2px 8px ${colors.primary}40`,
           }}
-        >
-          <svg width="22" height="24" viewBox="0 0 22 24" fill="none">
-              <rect x="4" y="1" width="16" height="22" rx="2.5" fill="white"/>
-              <rect x="1" y="1" width="5.5" height="22" rx="2" fill="white" fillOpacity="0.38"/>
-              <rect x="8" y="7.5" width="9" height="1.8" rx="0.9" fill={colors.primary} fillOpacity="0.6"/>
-              <rect x="8" y="12" width="9" height="1.8" rx="0.9" fill={colors.primary} fillOpacity="0.6"/>
-              <rect x="8" y="16.5" width="5.5" height="1.8" rx="0.9" fill={colors.primary} fillOpacity="0.6"/>
-            </svg>
-        </div>
+        />
         {!collapsed && (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
             <p
@@ -168,7 +170,7 @@ export function Sidebar() {
                 textOverflow: "ellipsis",
               }}
             >
-              Habit Journal
+              Habit Ink
             </p>
             <p
               style={{
@@ -189,7 +191,7 @@ export function Sidebar() {
 
       {/* Nav items */}
       <div style={{ flex: 1, padding: collapsed ? "6px 8px" : "6px 10px", overflow: "hidden" }}>
-        {TABS.map(({ path, label, Icon }) => {
+        {SIDEBAR_TABS.map(({ path, label, Icon }) => {
           const active = location.pathname === path;
           const isHovered = hovered === path;
           return (

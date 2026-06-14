@@ -18,6 +18,10 @@ interface SettingsState {
   userName: string;
   userEmoji: string;
   userAbout: string;
+  weightKg: string;
+  heightCm: string;
+  customQuoteText: string;
+  customQuoteAuthor: string;
 }
 
 interface SettingsContextValue extends SettingsState {
@@ -28,6 +32,10 @@ interface SettingsContextValue extends SettingsState {
   setUserName: (n: string) => void;
   setUserEmoji: (e: string) => void;
   setUserAbout: (a: string) => void;
+  setWeightKg: (w: string) => void;
+  setHeightCm: (h: string) => void;
+  setCustomQuoteText: (t: string) => void;
+  setCustomQuoteAuthor: (a: string) => void;
   reset: () => void;
 }
 
@@ -38,6 +46,10 @@ const DEFAULTS: SettingsState = {
   userName: "",
   userEmoji: "😊",
   userAbout: "",
+  weightKg: "",
+  heightCm: "",
+  customQuoteText: "",
+  customQuoteAuthor: "",
 };
 
 const STORAGE_KEY = "@habitjournal/settings";
@@ -89,6 +101,22 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => ({ ...prev, userAbout }));
   }, []);
 
+  const setWeightKg = useCallback((weightKg: string) => {
+    setSettings((prev) => ({ ...prev, weightKg }));
+  }, []);
+
+  const setHeightCm = useCallback((heightCm: string) => {
+    setSettings((prev) => ({ ...prev, heightCm }));
+  }, []);
+
+  const setCustomQuoteText = useCallback((customQuoteText: string) => {
+    setSettings((prev) => ({ ...prev, customQuoteText }));
+  }, []);
+
+  const setCustomQuoteAuthor = useCallback((customQuoteAuthor: string) => {
+    setSettings((prev) => ({ ...prev, customQuoteAuthor }));
+  }, []);
+
   const reset = useCallback(() => {
     setSettings(DEFAULTS);
   }, []);
@@ -106,6 +134,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setUserName,
         setUserEmoji,
         setUserAbout,
+        setWeightKg,
+        setHeightCm,
+        setCustomQuoteText,
+        setCustomQuoteAuthor,
         reset,
       }}
     >

@@ -37,7 +37,7 @@ function AnimatedBar({ pct, barColor }: { pct: number; barColor: string }) {
 export default function CalendarScreen() {
   const colors = useColors();
   const font = useFont();
-  const { habits, getCompletionForDate, getHabitsForDate } = useHabits();
+  const { habits, entries, getCompletionForDate, getHabitsForDate } = useHabits();
   const isWide = useIsWide();
 
   const today = new Date();
@@ -110,7 +110,7 @@ export default function CalendarScreen() {
               <span style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground }}>
                 {MONTHS[month]} {year}
               </span>
-              <button onClick={nextMonth} style={{ padding: 8, background: "none", border: "none", cursor: "pointer" }}>
+              <button onClick={nextMonth} disabled={atCurrentMonth} style={{ padding: 8, background: "none", border: "none", cursor: atCurrentMonth ? "default" : "pointer", opacity: atCurrentMonth ? 0.25 : 1 }}>
                 <ChevronRight size={20} color={colors.foreground} />
               </button>
             </div>
@@ -211,23 +211,33 @@ export default function CalendarScreen() {
                     </p>
                   </div>
                 ) : (
-                  selectedHabits.map((h) => (
-                    <div
-                      key={h.id}
-                      style={{
-                        display: "flex",
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        paddingTop: 14,
-                        paddingBottom: 14,
-                        borderBottom: `1px solid ${colors.line}`,
-                      }}
-                    >
-                      <span style={{ ...font.body, fontSize: font.size(16), color: colors.foreground, flex: 1 }}>{h.name}</span>
-                      <span style={{ ...font.body, fontSize: font.size(14), color: colors.mutedForeground, marginLeft: 8 }}>{h.target || "Yes"}</span>
-                    </div>
-                  ))
+                  selectedHabits.map((h) => {
+                    const entry = (entries[selected!] ?? []).find((e) => e.habitId === h.id);
+                    const status = entry?.status ?? "pending";
+                    const statusColor = status === "done" ? colors.success : status === "missed" ? colors.accent : colors.mutedForeground;
+                    const statusSymbol = status === "done" ? "✓" : status === "missed" ? "✗" : "○";
+                    return (
+                      <div
+                        key={h.id}
+                        style={{
+                          display: "flex",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 12,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          borderBottom: `1px solid ${colors.line}`,
+                        }}
+                      >
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>{h.emoji}</span>
+                        <span style={{ ...font.body, fontSize: font.size(15), color: colors.foreground, flex: 1 }}>{h.name}</span>
+                        {h.target && h.target !== "Complete" && (
+                          <span style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground }}>{h.target}</span>
+                        )}
+                        <span style={{ ...font.label, fontSize: font.size(15), color: statusColor, flexShrink: 0 }}>{statusSymbol}</span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             ) : (
@@ -297,7 +307,7 @@ export default function CalendarScreen() {
           <span style={{ ...font.heading, fontSize: font.size(22), color: colors.foreground }}>
             {MONTHS[month]} {year}
           </span>
-          <button onClick={nextMonth} style={{ padding: 8, background: "none", border: "none", cursor: "pointer" }}>
+          <button onClick={nextMonth} disabled={atCurrentMonth} style={{ padding: 8, background: "none", border: "none", cursor: atCurrentMonth ? "default" : "pointer", opacity: atCurrentMonth ? 0.25 : 1 }}>
             <ChevronRight size={22} color={colors.foreground} />
           </button>
         </div>
@@ -381,12 +391,19 @@ export default function CalendarScreen() {
             {selectedHabits.length === 0 ? (
               <p style={{ ...font.body, fontSize: font.size(16), color: colors.mutedForeground }}>No habits scheduled for this day.</p>
             ) : (
-              selectedHabits.map((h) => (
-                <div key={h.id} style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", paddingTop: 10, paddingBottom: 10, borderBottom: `1px solid ${colors.line}` }}>
-                  <span style={{ ...font.body, fontSize: font.size(17), color: colors.foreground, flex: 1 }}>{h.name}</span>
-                  <span style={{ ...font.body, fontSize: font.size(15), color: colors.mutedForeground, marginLeft: 8 }}>{h.target || "Yes"}</span>
-                </div>
-              ))
+              selectedHabits.map((h) => {
+                const entry = (entries[selected!] ?? []).find((e) => e.habitId === h.id);
+                const status = entry?.status ?? "pending";
+                const statusColor = status === "done" ? colors.success : status === "missed" ? colors.accent : colors.mutedForeground;
+                const statusSymbol = status === "done" ? "✓" : status === "missed" ? "✗" : "○";
+                return (
+                  <div key={h.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 10, paddingBottom: 10, borderBottom: `1px solid ${colors.line}` }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{h.emoji}</span>
+                    <span style={{ ...font.body, fontSize: font.size(16), color: colors.foreground, flex: 1 }}>{h.name}</span>
+                    <span style={{ ...font.label, fontSize: font.size(16), color: statusColor, flexShrink: 0 }}>{statusSymbol}</span>
+                  </div>
+                );
+              })
             )}
           </div>
         )}

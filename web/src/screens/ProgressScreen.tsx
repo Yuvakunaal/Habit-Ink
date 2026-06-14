@@ -7,43 +7,20 @@ import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useIsWide } from "@/hooks/useIsDesktop";
 
-function Last7Dots({ habitId }: { habitId: string }) {
-  const colors = useColors();
-  const { habits, entries } = useHabits();
-  const habit = habits.find((h) => h.id === habitId);
-  const dots = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const key = toDateKey(d);
-    const scheduled = habit ? isScheduledForDate(habit, key) : false;
-    if (!scheduled) return "skip";
-    const entry = (entries[key] ?? []).find((e) => e.habitId === habitId);
-    return entry?.status ?? "pending";
-  });
 
-  return (
-    <div style={{ display: "flex", flexDirection: "row", gap: 4 }}>
-      {dots.map((status, i) => {
-        const bg =
-          status === "skip" ? "transparent"
-          : status === "done" ? colors.success
-          : status === "missed" ? colors.accent
-          : colors.muted;
-        return (
-          <div key={i} style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: bg, border: status === "pending" ? `1px solid ${colors.border}` : "none" }} />
-        );
-      })}
-    </div>
-  );
-}
-
-function StatCard({ label, value, color, icon }: { label: string; value: string | number; color?: string; icon?: string }) {
+function StatCard({ label, value, color, icon, trend }: { label: string; value: string | number; color?: string; icon?: string; trend?: { diff: number } }) {
   const colors = useColors();
   const font = useFont();
+  const trendColor = trend ? (trend.diff > 0 ? colors.success : trend.diff < 0 ? colors.accent : colors.mutedForeground) : undefined;
   return (
     <div style={{ flex: 1, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, backgroundColor: colors.card }}>
       {icon && <span style={{ fontSize: 18, marginBottom: 4 }}>{icon}</span>}
       <span style={{ ...font.heading, fontSize: font.size(24), color: color ?? colors.primary }}>{value}</span>
+      {trend && (
+        <span style={{ ...font.label, fontSize: font.size(10), color: trendColor, backgroundColor: trendColor + "18", borderRadius: 8, paddingLeft: 6, paddingRight: 6, paddingTop: 2, paddingBottom: 2 }}>
+          {trend.diff > 0 ? "▲" : trend.diff < 0 ? "▼" : "="} {Math.abs(trend.diff)}% vs last mo
+        </span>
+      )}
       <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, textAlign: "center" }}>{label}</span>
     </div>
   );
@@ -91,9 +68,6 @@ function HabitBreakdownRow({ habit, streak, longestStreak, done30, sched30, pct3
           </div>
         </div>
         <div style={{ paddingLeft: 12, paddingRight: 12 }}>
-          <Last7Dots habitId={habit.id} />
-        </div>
-        <div style={{ marginTop: 10, paddingLeft: 12, paddingRight: 12 }}>
           <div style={{ height: 6, borderRadius: 3, backgroundColor: colors.muted, overflow: "hidden" }}>
             <div style={{ height: 6, borderRadius: 3, width: `${displayPct}%`, backgroundColor: barColor, transition: "width 0.65s cubic-bezier(0.4, 0, 0.2, 1)" }} />
           </div>
@@ -149,6 +123,43 @@ export default function ProgressScreen() {
   }
   const rate30 = totalScheduled === 0 ? 0 : Math.round((totalDone / totalScheduled) * 100);
 
+  // Month-over-month comparison
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  let thisDone = 0, thisSched = 0, lastDone = 0, lastSched = 0;
+  for (let i = 0; i < 62; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = toDateKey(d);
+    const { done, total } = getCompletionForDate(key);
+    if (d >= thisMonthStart && d <= now) { thisDone += done; thisSched += total; }
+    else if (d >= lastMonthStart && d <= lastMonthEnd) { lastDone += done; lastSched += total; }
+  }
+  const thisRate = thisSched === 0 ? null : Math.round((thisDone / thisSched) * 100);
+  const lastRate = lastSched === 0 ? null : Math.round((lastDone / lastSched) * 100);
+  const momDiff = thisRate !== null && lastRate !== null ? thisRate - lastRate : null;
+
+  // All-time lifetime stats
+  let bestStreakEver = 0;
+  let curStreakRun = 0;
+  let perfectDays = 0;
+  let allTimeDoneTotal = 0;
+  let allTimeSchedTotal = 0;
+  for (let i = 0; i < 730; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = toDateKey(d);
+    const { done, total } = getCompletionForDate(key);
+    if (total === 0) continue;
+    allTimeDoneTotal += done; allTimeSchedTotal += total;
+    if (done > 0) { curStreakRun++; if (curStreakRun > bestStreakEver) bestStreakEver = curStreakRun; }
+    else curStreakRun = 0;
+    if (done >= total) perfectDays++;
+  }
+  const allTimeRate = allTimeSchedTotal === 0 ? null : Math.round((allTimeDoneTotal / allTimeSchedTotal) * 100);
+  const totalCheckIns = Object.values(entries).flat().filter(e => e.status === "done").length;
+
   const habitStats = habits.map((habit) => {
     let streak = 0;
     let longestStreak = 0;
@@ -188,6 +199,84 @@ export default function ProgressScreen() {
       ))}
     </>
   );
+
+  // Auto-generated insights (desktop only)
+  const DOW_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const dowStats = Array.from({ length: 7 }, () => ({ done: 0, total: 0 }));
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = toDateKey(d);
+    const dow = d.getDay();
+    const { done, total } = getCompletionForDate(key);
+    if (total > 0) { dowStats[dow].done += done; dowStats[dow].total += total; }
+  }
+  const dowRates = dowStats.map((s, i) => ({ dow: i, rate: s.total === 0 ? -1 : Math.round((s.done / s.total) * 100) }));
+  const bestDow = [...dowRates].filter(d => d.rate >= 0).sort((a, b) => b.rate - a.rate)[0];
+
+  const totalAllTimeCheckIns = Object.values(entries).flat().filter(e => e.status === "done").length;
+
+  let thisWeekDone = 0, thisWeekSched = 0, lastWeekDone = 0, lastWeekSched = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const { done, total } = getCompletionForDate(toDateKey(d));
+    thisWeekDone += done; thisWeekSched += total;
+  }
+  for (let i = 7; i < 14; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const { done, total } = getCompletionForDate(toDateKey(d));
+    lastWeekDone += done; lastWeekSched += total;
+  }
+  const thisWeekRate = thisWeekSched === 0 ? null : Math.round((thisWeekDone / thisWeekSched) * 100);
+  const lastWeekRate = lastWeekSched === 0 ? null : Math.round((lastWeekDone / lastWeekSched) * 100);
+
+  const topHabitRow = [...habitStats].sort((a, b) => b.pct30 - a.pct30)[0];
+  const insights: string[] = [];
+  if (bestDow && bestDow.rate > 0) {
+    insights.push(`You're most consistent on ${DOW_NAMES[bestDow.dow]}s — ${bestDow.rate}% completion average`);
+  }
+  if (topHabitRow && topHabitRow.pct30 > 0) {
+    const streakText = topHabitRow.streak > 0 ? ` · ${topHabitRow.streak}-day streak` : "";
+    insights.push(`${topHabitRow.habit.emoji} ${topHabitRow.habit.name} is your #1 habit (${topHabitRow.pct30}% rate${streakText})`);
+  }
+  if (totalAllTimeCheckIns > 0) {
+    insights.push(`You've logged ${totalAllTimeCheckIns} total check-in${totalAllTimeCheckIns !== 1 ? "s" : ""} — every one counts`);
+  }
+  if (thisWeekRate !== null && lastWeekRate !== null) {
+    const weekDiff = thisWeekRate - lastWeekRate;
+    if (weekDiff >= 0) {
+      insights.push(`This week (${thisWeekRate}%) is tracking ahead of last week (${lastWeekRate}%) ↑`);
+    } else {
+      insights.push(`Last week was ${lastWeekRate}% — this week at ${thisWeekRate}% so far, keep going`);
+    }
+  }
+
+  const allTimeStatsRow = (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: isWide ? "repeat(4, 1fr)" : "repeat(2, 1fr)",
+      gap: 8,
+      marginBottom: 16,
+    }}>
+      <StatCard label="Total Check-ins" value={totalCheckIns} color={colors.success} icon="✅" />
+      <StatCard label="Best Streak" value={`${bestStreakEver}d`} color={colors.primary} icon="🔥" />
+      <StatCard label="Perfect Days" value={perfectDays} color="#F4C430" icon="⭐" />
+      <StatCard label="All-time Rate" value={allTimeRate !== null ? `${allTimeRate}%` : "—"} icon="📈" />
+    </div>
+  );
+
+  const insightsSection = insights.length > 0 ? (
+    <div style={{ marginTop: 16, border: `1px solid ${colors.border}`, borderRadius: 14, padding: "18px 20px", backgroundColor: colors.card }}>
+      <span style={{ ...font.label, fontSize: font.size(12), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 14, textTransform: "uppercase" as const }}>
+        💡 Insights
+      </span>
+      {insights.map((insight, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < insights.length - 1 ? 10 : 0 }}>
+          <div style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 7, flexShrink: 0 }} />
+          <span style={{ ...font.body, fontSize: font.size(13), color: colors.foreground, lineHeight: 1.5 }}>{insight}</span>
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   if (habits.length === 0) {
     return (
@@ -242,12 +331,12 @@ export default function ProgressScreen() {
 
                 <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
                   <StatCard label="Today Done" value={`${todayDone}/${todayTotal}`} color={colors.success} icon="✅" />
-                  <StatCard label="30-Day Rate" value={`${rate30}%`} icon="📈" />
+                  <StatCard label="30-Day Rate" value={`${rate30}%`} icon="📈" trend={momDiff !== null ? { diff: momDiff } : undefined} />
                   <StatCard label="Total Habits" value={habits.length} icon="📝" />
                 </div>
               </div>
 
-              {/* Right col: Weekly chart + Heatmap */}
+              {/* Right col: Weekly chart + 15-Week Activity */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 20, backgroundColor: colors.card }}>
                   <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 16, textTransform: "uppercase" as const }}>
@@ -264,7 +353,9 @@ export default function ProgressScreen() {
               </div>
             </div>
 
+            {allTimeStatsRow}
             {habitBreakdown}
+            {insightsSection}
           </div>
         </div>
       </div>
@@ -299,7 +390,7 @@ export default function ProgressScreen() {
 
         <div style={{ display: "flex", flexDirection: "row", gap: 8, marginBottom: 12 }}>
           <StatCard label="Today Done" value={`${todayDone}/${todayTotal}`} color={colors.success} icon="✅" />
-          <StatCard label="30-Day Rate" value={`${rate30}%`} icon="📈" />
+          <StatCard label="30-Day Rate" value={`${rate30}%`} icon="📈" trend={momDiff !== null ? { diff: momDiff } : undefined} />
           <StatCard label="Total Habits" value={habits.length} icon="📝" />
         </div>
 
@@ -308,12 +399,22 @@ export default function ProgressScreen() {
           <WeeklyChart />
         </div>
 
-        <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 16, marginBottom: 12, backgroundColor: colors.card }}>
+        <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 16, marginBottom: 12, backgroundColor: colors.card, overflow: "hidden" }}>
           <span style={{ ...font.label, fontSize: font.size(12), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 14 }}>15-WEEK ACTIVITY</span>
-          <MonthHeatmap />
+          <div style={{ overflowX: "auto", margin: "0 -16px", padding: "0 16px" }}>
+            <div style={{ minWidth: 400 }}>
+              <MonthHeatmap />
+            </div>
+          </div>
         </div>
 
+        <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 8, textTransform: "uppercase" as const }}>
+          All-Time Stats
+        </span>
+        {allTimeStatsRow}
+
         {habitBreakdown}
+        {insightsSection}
       </div>
     </div>
   );

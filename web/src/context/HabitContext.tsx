@@ -26,6 +26,7 @@ export interface Habit {
   emoji: string;
   color: string;
   createdAt: string;
+  archived?: boolean;
 }
 
 export interface HabitEntry {
@@ -38,36 +39,16 @@ export interface HabitEntry {
 export interface DailyJournal {
   date: string;
   wakeUpTime: string;
+  intention: string;
   notes: string;
   wins: string;
   challenges: string;
-}
-
-export interface GroupMember {
-  id: string;
-  name: string;
-  joinedAt: string;
-}
-
-export interface Group {
-  id: string;
-  name: string;
-  description: string;
-  creatorName: string;
-  habitNames: string[];
-  schedule: ScheduleType;
-  startDate: string;
-  endDate: string;
-  members: GroupMember[];
-  inviteCode: string;
-  createdAt: string;
 }
 
 interface HabitContextType {
   habits: Habit[];
   entries: Record<string, HabitEntry[]>;
   journals: Record<string, DailyJournal>;
-  groups: Group[];
   appStartDate: string;
   addHabit: (habit: Omit<Habit, "id" | "createdAt">) => void;
   updateHabit: (id: string, habit: Partial<Habit>) => void;
@@ -75,8 +56,6 @@ interface HabitContextType {
   setEntryStatus: (habitId: string, date: string, status: EntryStatus) => void;
   setEntryActual: (habitId: string, date: string, actual: string) => void;
   updateJournal: (date: string, update: Partial<DailyJournal>) => void;
-  createGroup: (group: Omit<Group, "id" | "inviteCode" | "createdAt">) => Group;
-  joinGroup: (inviteCode: string, memberName: string) => boolean;
   getHabitsForDate: (date: string) => Habit[];
   getEntry: (habitId: string, date: string) => HabitEntry | undefined;
   getStreak: (habitId: string) => number;
@@ -88,7 +67,10 @@ interface HabitContextType {
 const HabitContext = createContext<HabitContextType | null>(null);
 
 export function toDateKey(date: Date): string {
-  return date.toISOString().split("T")[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export function isScheduledForDate(habit: Habit, dateKey: string): boolean {
@@ -120,15 +102,10 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-function randomCode(): string {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
-
 const STORAGE_KEYS = {
   habits: "@habitjournal/habits",
   entries: "@habitjournal/entries",
   journals: "@habitjournal/journals",
-  groups: "@habitjournal/groups",
   appStart: "@habitjournal/appstart",
 };
 
@@ -136,7 +113,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<Record<string, HabitEntry[]>>({});
   const [journals, setJournals] = useState<Record<string, DailyJournal>>({});
-  const [groups, setGroups] = useState<Group[]>([]);
   const [appStartDate, setAppStartDate] = useState<string>(toDateKey(new Date()));
   const [loaded, setLoaded] = useState(false);
 
@@ -145,7 +121,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     const h = localStorage.getItem(STORAGE_KEYS.habits);
     const e = localStorage.getItem(STORAGE_KEYS.entries);
     const j = localStorage.getItem(STORAGE_KEYS.journals);
-    const g = localStorage.getItem(STORAGE_KEYS.groups);
     const s = localStorage.getItem(STORAGE_KEYS.appStart);
 
     if (h) {
@@ -160,7 +135,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     }
     if (e) setEntries(JSON.parse(e));
     if (j) setJournals(JSON.parse(j));
-    if (g) setGroups(JSON.parse(g));
     if (s) {
       setAppStartDate(s);
     } else {
@@ -181,9 +155,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loaded) localStorage.setItem(STORAGE_KEYS.journals, JSON.stringify(journals));
   }, [journals, loaded]);
-  useEffect(() => {
-    if (loaded) localStorage.setItem(STORAGE_KEYS.groups, JSON.stringify(groups));
-  }, [groups, loaded]);
 
   const addHabit = useCallback(
     (habit: Omit<Habit, "id" | "createdAt">) => {
@@ -256,48 +227,13 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         const existing = prev[date] ?? {
           date,
           wakeUpTime: "",
+          intention: "",
           notes: "",
           wins: "",
           challenges: "",
         };
         return { ...prev, [date]: { ...existing, ...update } };
       });
-    },
-    []
-  );
-
-  const createGroup = useCallback(
-    (input: Omit<Group, "id" | "inviteCode" | "createdAt">): Group => {
-      const group: Group = {
-        ...input,
-        id: uid(),
-        inviteCode: randomCode(),
-        createdAt: new Date().toISOString(),
-      };
-      setGroups((prev) => [...prev, group]);
-      return group;
-    },
-    []
-  );
-
-  const joinGroup = useCallback(
-    (inviteCode: string, memberName: string): boolean => {
-      let found = false;
-      setGroups((prev) =>
-        prev.map((g) => {
-          if (g.inviteCode.toUpperCase() !== inviteCode.toUpperCase()) return g;
-          if (g.members.some((m) => m.name === memberName)) return g;
-          found = true;
-          return {
-            ...g,
-            members: [
-              ...g.members,
-              { id: uid(), name: memberName, joinedAt: new Date().toISOString() },
-            ],
-          };
-        })
-      );
-      return found;
     },
     []
   );
@@ -382,7 +318,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         habits,
         entries,
         journals,
-        groups,
         appStartDate,
         addHabit,
         updateHabit,
@@ -390,8 +325,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         setEntryStatus,
         setEntryActual,
         updateJournal,
-        createGroup,
-        joinGroup,
         getHabitsForDate,
         getEntry,
         getStreak,

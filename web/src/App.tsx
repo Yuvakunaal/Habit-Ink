@@ -14,6 +14,7 @@ import CalendarScreen from "@/screens/CalendarScreen";
 import ProgressScreen from "@/screens/ProgressScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
+import JournalScreen from "@/screens/JournalScreen";
 
 function AppLayout() {
   const colors = useColors();
@@ -27,14 +28,15 @@ function AppLayout() {
 
   useEffect(() => {
     const titles: Record<string, string> = {
-      "/": "Today — Habit Journal",
-      "/habits": "Habits — Habit Journal",
-      "/calendar": "Calendar — Habit Journal",
-      "/progress": "Progress — Habit Journal",
-      "/profile": "Profile — Habit Journal",
-      "/settings": "Settings — Habit Journal",
+      "/": "Today — Habit Ink",
+      "/habits": "Habits — Habit Ink",
+      "/calendar": "Calendar — Habit Ink",
+      "/progress": "Progress — Habit Ink",
+      "/journal": "Journal — Habit Ink",
+      "/profile": "Profile — Habit Ink",
+      "/settings": "Settings — Habit Ink",
     };
-    document.title = titles[location.pathname] ?? "Habit Journal";
+    document.title = titles[location.pathname] ?? "Habit Ink";
   }, [location.pathname]);
 
   // Mobile: Settings is a full-page overlay (no sidebar)
@@ -56,6 +58,7 @@ function AppLayout() {
             <Route path="/habits" element={<HabitsScreen />} />
             <Route path="/calendar" element={<CalendarScreen />} />
             <Route path="/progress" element={<ProgressScreen />} />
+            <Route path="/journal" element={<JournalScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -73,6 +76,7 @@ function AppLayout() {
           <Route path="/habits" element={<HabitsScreen />} />
           <Route path="/calendar" element={<CalendarScreen />} />
           <Route path="/progress" element={<ProgressScreen />} />
+          <Route path="/journal" element={<JournalScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -47,3 +47,5 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+backend_db_plan.md
