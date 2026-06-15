@@ -361,16 +361,16 @@ export default function CalendarScreen() {
           })}
         </div>
 
-        {/* Legend */}
-        <div style={{ display: "flex", flexDirection: "row", justifyContent: "center", gap: 20, marginBottom: 12 }}>
+        {/* Legend — same tinted rectangles as desktop */}
+        <div style={{ display: "flex", flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 12 }}>
           {[
-            { color: colors.success, label: "All done" },
-            { color: colors.secondary, label: "Partial" },
-            { color: colors.accent, label: "Missed" },
+            { bg: colors.success + "22", label: "All done" },
+            { bg: colors.secondary + "22", label: "Partial" },
+            { bg: colors.accent + "15", label: "Missed" },
           ].map((item) => (
             <div key={item.label} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }} />
-              <span style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground }}>{item.label}</span>
+              <div style={{ width: 18, height: 14, borderRadius: 5, backgroundColor: item.bg, border: `1px solid ${colors.border}` }} />
+              <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground }}>{item.label}</span>
             </div>
           ))}
         </div>

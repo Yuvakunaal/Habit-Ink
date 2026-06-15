@@ -49,3 +49,11 @@ Thumbs.db
 .local/
 
 backend_db_plan.md
+
+# Environment files
+.env
+.env.local
+web/.env.local
+
+# Google client secrets
+client_secret_281975303040-a1nmhqavi7e12baj8rf1u7j9pnsdqp9b.apps.googleusercontent.com.json

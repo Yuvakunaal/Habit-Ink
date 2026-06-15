@@ -95,6 +95,10 @@ export function Modal({ visible, onClose, children }: ModalProps) {
         className="hide-scrollbar"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* drag handle */}
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 10, paddingBottom: 4, flexShrink: 0 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+        </div>
         {children}
       </div>
     </div>

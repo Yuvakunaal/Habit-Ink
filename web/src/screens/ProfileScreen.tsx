@@ -65,6 +65,9 @@ export default function ProfileScreen() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [showAvatars, setShowAvatars] = useState(false);
+  const [customEmojiInput, setCustomEmojiInput] = useState("");
+  const [weightUnit, setWeightUnit] = useState<"kg" | "lbs">("kg");
+  const [heightUnit, setHeightUnit] = useState<"cm" | "ft">("cm");
 
   const saveName = () => {
     const trimmed = nameInput.trim();
@@ -74,7 +77,41 @@ export default function ProfileScreen() {
   };
 
   const journalDay = getDayNumber();
-  const heightDisplay = cmToFtIn(heightCm);
+
+  const weightDisplayValue = (() => {
+    if (!weightKg) return "";
+    if (weightUnit === "kg") return weightKg;
+    const lbs = parseFloat(weightKg) * 2.20462;
+    return isNaN(lbs) ? "" : lbs.toFixed(1);
+  })();
+
+  const handleWeightChange = (raw: string) => {
+    if (!raw) { setWeightKg(""); return; }
+    if (weightUnit === "kg") { setWeightKg(raw); return; }
+    const kg = parseFloat(raw) / 2.20462;
+    setWeightKg(isNaN(kg) ? "" : kg.toFixed(2));
+  };
+
+  const heightDisplayValue = (() => {
+    if (!heightCm) return "";
+    if (heightUnit === "cm") return heightCm;
+    const ft = parseFloat(heightCm) / 30.48;
+    return isNaN(ft) ? "" : ft.toFixed(1);
+  })();
+
+  const heightSecondary = (() => {
+    if (!heightCm) return "";
+    if (heightUnit === "cm") return cmToFtIn(heightCm);
+    const cm = Math.round(parseFloat(heightCm));
+    return isNaN(cm) ? "" : `${cm} cm`;
+  })();
+
+  const handleHeightChange = (raw: string) => {
+    if (!raw) { setHeightCm(""); return; }
+    if (heightUnit === "cm") { setHeightCm(raw); return; }
+    const cm = parseFloat(raw) * 30.48;
+    setHeightCm(isNaN(cm) ? "" : cm.toFixed(1));
+  };
 
   const inputBase: React.CSSProperties = {
     ...font.body,
@@ -160,25 +197,44 @@ export default function ProfileScreen() {
 
               {/* Emoji grid */}
               {showAvatars && (
-                <div style={{
-                  display: "flex", flexWrap: "wrap", justifyContent: "center",
-                  gap: 7, marginBottom: 18, maxWidth: 320,
-                }}>
-                  {AVATARS.map((a) => (
+                <div style={{ marginBottom: 18, maxWidth: 320, width: "100%" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 7, marginBottom: 10 }}>
+                    {AVATARS.map((a) => (
+                      <button
+                        key={a}
+                        onClick={() => { setUserEmoji(a); setShowAvatars(false); showToast("Avatar updated", "success"); }}
+                        style={{
+                          width: 44, height: 44, borderRadius: 22,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          backgroundColor: userEmoji === a ? colors.primary + "1a" : colors.muted,
+                          border: `${userEmoji === a ? 2 : 1}px solid ${userEmoji === a ? colors.primary : colors.border}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{ fontSize: 22 }}>{a}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Custom emoji input */}
+                  <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, border: `1.5px solid ${colors.border}`, borderRadius: 10, padding: "8px 12px" }}>
+                    <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, flexShrink: 0 }}>Custom:</span>
+                    <input
+                      value={customEmojiInput}
+                      onChange={(e) => setCustomEmojiInput(e.target.value)}
+                      placeholder="Paste any emoji…"
+                      maxLength={4}
+                      style={{ flex: 1, ...font.body, fontSize: font.size(18), color: colors.foreground, background: "none", border: "none", outline: "none", textAlign: "center" }}
+                    />
                     <button
-                      key={a}
-                      onClick={() => { setUserEmoji(a); setShowAvatars(false); showToast("Avatar updated", "success"); }}
-                      style={{
-                        width: 44, height: 44, borderRadius: 22,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        backgroundColor: userEmoji === a ? colors.primary + "1a" : colors.muted,
-                        border: `${userEmoji === a ? 2 : 1}px solid ${userEmoji === a ? colors.primary : colors.border}`,
-                        cursor: "pointer",
+                      onClick={() => {
+                        const em = [...customEmojiInput.trim()][0];
+                        if (em) { setUserEmoji(em); setShowAvatars(false); setCustomEmojiInput(""); showToast("Avatar updated", "success"); }
                       }}
+                      style={{ ...font.label, fontSize: font.size(12), color: colors.primaryForeground, backgroundColor: colors.primary, border: "none", borderRadius: 8, padding: "5px 12px", cursor: "pointer", flexShrink: 0 }}
                     >
-                      <span style={{ fontSize: 22 }}>{a}</span>
+                      Use
                     </button>
-                  ))}
+                  </div>
                 </div>
               )}
 
@@ -246,63 +302,83 @@ export default function ProfileScreen() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {/* Weight */}
               <div>
-                <label style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, display: "block", marginBottom: 6 }}>
-                  Weight
-                </label>
+                <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <label style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground }}>Weight</label>
+                  <div style={{ display: "flex", flexDirection: "row", backgroundColor: colors.muted, borderRadius: 8, padding: 2 }}>
+                    {(["kg", "lbs"] as const).map((u) => (
+                      <button
+                        key={u}
+                        onClick={() => setWeightUnit(u)}
+                        style={{
+                          ...font.label, fontSize: font.size(11),
+                          color: weightUnit === u ? colors.primaryForeground : colors.mutedForeground,
+                          backgroundColor: weightUnit === u ? colors.primary : "transparent",
+                          border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >{u}</button>
+                    ))}
+                  </div>
+                </div>
                 <div style={{ position: "relative" }}>
                   <input
                     type="number"
                     min="0"
-                    step="0.1"
-                    value={weightKg}
-                    onChange={(e) => setWeightKg(e.target.value)}
+                    step={weightUnit === "kg" ? "0.1" : "0.5"}
+                    value={weightDisplayValue}
+                    onChange={(e) => handleWeightChange(e.target.value)}
                     placeholder="—"
-                    style={{
-                      ...inputBase,
-                      paddingRight: 44,
-                      backgroundColor: colors.card,
-                    }}
+                    style={{ ...inputBase, paddingRight: 44, backgroundColor: colors.card }}
                   />
                   <span style={{
                     position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                    ...font.label, fontSize: font.size(12), color: colors.primary,
-                    pointerEvents: "none",
+                    ...font.label, fontSize: font.size(12), color: colors.primary, pointerEvents: "none",
                   }}>
-                    kg
+                    {weightUnit}
                   </span>
                 </div>
               </div>
 
               {/* Height */}
               <div>
-                <label style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, display: "block", marginBottom: 6 }}>
-                  Height
-                </label>
+                <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <label style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground }}>Height</label>
+                  <div style={{ display: "flex", flexDirection: "row", backgroundColor: colors.muted, borderRadius: 8, padding: 2 }}>
+                    {(["cm", "ft"] as const).map((u) => (
+                      <button
+                        key={u}
+                        onClick={() => setHeightUnit(u)}
+                        style={{
+                          ...font.label, fontSize: font.size(11),
+                          color: heightUnit === u ? colors.primaryForeground : colors.mutedForeground,
+                          backgroundColor: heightUnit === u ? colors.primary : "transparent",
+                          border: "none", borderRadius: 6, padding: "3px 8px", cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >{u}</button>
+                    ))}
+                  </div>
+                </div>
                 <div style={{ position: "relative" }}>
                   <input
                     type="number"
                     min="0"
-                    step="1"
-                    value={heightCm}
-                    onChange={(e) => setHeightCm(e.target.value)}
+                    step={heightUnit === "cm" ? "1" : "0.1"}
+                    value={heightDisplayValue}
+                    onChange={(e) => handleHeightChange(e.target.value)}
                     placeholder="—"
-                    style={{
-                      ...inputBase,
-                      paddingRight: 44,
-                      backgroundColor: colors.card,
-                    }}
+                    style={{ ...inputBase, paddingRight: 44, backgroundColor: colors.card }}
                   />
                   <span style={{
                     position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                    ...font.label, fontSize: font.size(12), color: colors.primary,
-                    pointerEvents: "none",
+                    ...font.label, fontSize: font.size(12), color: colors.primary, pointerEvents: "none",
                   }}>
-                    cm
+                    {heightUnit}
                   </span>
                 </div>
-                {heightDisplay && (
+                {heightSecondary && (
                   <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, display: "block", marginTop: 5 }}>
-                    ≈ {heightDisplay}
+                    ≈ {heightSecondary}
                   </span>
                 )}
               </div>

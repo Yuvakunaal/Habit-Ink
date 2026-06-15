@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, CheckCircle2, XCircle, Circle,
   Settings, Feather as FeatherIcon, CheckCircle, Clock, Keyboard, GripVertical,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { EntryStatus, HabitType, isScheduledForDate, toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
@@ -91,7 +91,7 @@ function WeekStrip({ dateKey }: { dateKey: string }) {
   const colors = useColors();
   const font = useFont();
   const { getCompletionForDate } = useHabits();
-  const DAY_LETTERS = ["S","M","T","W","T","F","S"];
+  const DAY_LETTERS = ["Su","M","T","W","T","F","S"];
   const days = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -174,6 +174,7 @@ export default function TodayScreen() {
   const colors = useColors();
   const font = useFont();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isDesktop = useIsDesktop();
   const { theme, customQuoteText, customQuoteAuthor } = useSettings();
   const { showToast } = useToast();
@@ -182,7 +183,19 @@ export default function TodayScreen() {
     updateJournal, journals, getDayNumber, appStartDate, habits, entries,
   } = useHabits();
 
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const param = searchParams.get("date");
+    if (param) {
+      const d = new Date(param + "T12:00:00");
+      if (!isNaN(d.getTime())) return d;
+    }
+    return new Date();
+  });
+
+  // Clear the ?date= param from URL after it's been consumed
+  useEffect(() => {
+    if (searchParams.get("date")) setSearchParams({}, { replace: true });
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -400,6 +413,24 @@ export default function TodayScreen() {
             </div>
           </div>
 
+          {/* Back to Today pill */}
+          {!isToday && (
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <button
+                onClick={() => { setCurrentDate(new Date()); setEditingId(null); setFocusedHabitIdx(-1); }}
+                style={{
+                  display: "flex", flexDirection: "row", alignItems: "center", gap: 6,
+                  paddingLeft: 16, paddingRight: 16, paddingTop: 7, paddingBottom: 7,
+                  borderRadius: 20, border: `1.5px solid ${colors.primary}`,
+                  backgroundColor: colors.primary + "12", cursor: "pointer",
+                  animation: "pillIn 0.2s ease-out",
+                }}
+              >
+                <span style={{ ...font.label, fontSize: font.size(13), color: colors.primary }}>↩ Back to Today</span>
+              </button>
+            </div>
+          )}
+
           <div style={{ height: 1, backgroundColor: colors.line, marginBottom: 12 }} />
 
           {/* Intention */}
@@ -423,7 +454,7 @@ export default function TodayScreen() {
             </div>
             <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
               <span style={{ ...font.label, fontSize: font.size(16), color: colors.primary }}>Day: </span>
-              <span style={{ ...font.body, fontSize: font.size(16), color: colors.foreground }}>Day {getDayNumber(currentDate)}</span>
+              <span style={{ ...font.body, fontSize: font.size(16), color: colors.foreground }}>{getDayNumber(currentDate)}</span>
             </div>
           </div>
 

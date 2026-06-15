@@ -8,6 +8,7 @@ import { useToast } from "@/context/ToastContext";
 import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useAuth } from "@/context/AuthContext";
 
 const THEME_ORDER: ThemeName[] = ["cream", "midnight", "forest", "rose", "slate"];
 
@@ -42,6 +43,7 @@ export default function SettingsScreen() {
   const isDesktop = useIsDesktop();
   const { theme, fontStyle, fontSize, customQuoteText, customQuoteAuthor, setTheme, setFontStyle, setFontSize, setCustomQuoteText, setCustomQuoteAuthor, reset } = useSettings();
   const { showToast } = useToast();
+  const { user, signOut } = useAuth();
 
   const handleTheme = (key: ThemeName) => {
     if (key === theme) return;
@@ -222,6 +224,46 @@ export default function SettingsScreen() {
             <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground }}>Version 1.0</span>
           </div>
         </Section>
+
+        {/* Account */}
+        <Section title="Account">
+          <div style={{ border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden", backgroundColor: colors.card }}>
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: `1px solid ${colors.border}` }}>
+              {user?.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url as string}
+                  referrerPolicy="no-referrer"
+                  alt="avatar"
+                  style={{ width: 38, height: 38, borderRadius: 19, objectFit: "cover", border: `1.5px solid ${colors.border}`, flexShrink: 0 }}
+                />
+              ) : (
+                <div style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary + "18", border: `1.5px solid ${colors.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontSize: 20 }}>😊</span>
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...font.label, fontSize: font.size(14), color: colors.foreground, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {(user?.user_metadata?.full_name as string) || "Google Account"}
+                </p>
+                <p style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {user?.email ?? ""}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (window.confirm("Sign out of Habit Ink?")) {
+                  await signOut();
+                }
+              }}
+              style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "13px 16px", background: "none", border: "none", cursor: "pointer" }}
+            >
+              <span style={{ ...font.label, fontSize: font.size(15), color: colors.destructive }}>Sign Out</span>
+            </button>
+          </div>
+        </Section>
+
+        <div style={{ height: 1, backgroundColor: colors.line }} />
 
         {/* Reset */}
         <button

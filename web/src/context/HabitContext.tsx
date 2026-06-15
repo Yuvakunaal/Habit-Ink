@@ -306,7 +306,8 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
 
   const getDayNumber = useCallback((date?: Date): number => {
     const start = new Date(appStartDate + "T12:00:00");
-    const target = date ?? new Date();
+    const d = date ?? new Date();
+    const target = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
     return (
       Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
     );

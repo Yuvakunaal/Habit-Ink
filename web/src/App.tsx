@@ -4,6 +4,8 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { HabitProvider } from "@/context/HabitContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { AuthGate } from "@/components/AuthGate";
 import { TabBar, Sidebar } from "@/components/TabBar";
 import { useColors } from "@/hooks/useColors";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -88,12 +90,16 @@ function AppLayout() {
 
 export function App() {
   return (
-    <SettingsProvider>
-      <HabitProvider>
-        <ToastProvider>
-          <AppLayout />
-        </ToastProvider>
-      </HabitProvider>
-    </SettingsProvider>
+    <AuthProvider>
+      <SettingsProvider>
+        <HabitProvider>
+          <ToastProvider>
+            <AuthGate>
+              <AppLayout />
+            </AuthGate>
+          </ToastProvider>
+        </HabitProvider>
+      </SettingsProvider>
+    </AuthProvider>
   );
 }

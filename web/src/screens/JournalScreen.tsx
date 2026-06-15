@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Clock, BookOpen } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, BookOpen, ArrowUpRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
@@ -101,6 +102,7 @@ function EntryCard({
 }) {
   const colors = useColors();
   const font = useFont();
+  const navigate = useNavigate();
   const { journals } = useHabits();
   const [expanded, setExpanded] = useState(isToday);
 
@@ -191,10 +193,24 @@ function EntryCard({
           </div>
 
           {/* Right side */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
             {!hasContent && (
               <span style={{ ...font.body, fontSize: font.size(10), color: colors.border, fontStyle: "italic" }}>empty</span>
             )}
+            {/* Open in Today */}
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/?date=${dateKey}`); }}
+              title="Open in Today"
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 26, height: 26, borderRadius: 8,
+                backgroundColor: colors.primary + "12",
+                border: `1px solid ${colors.primary}25`,
+                cursor: "pointer",
+              }}
+            >
+              <ArrowUpRight size={13} color={colors.primary} />
+            </button>
             <div style={{ opacity: 0.55 }}>
               {expanded
                 ? <ChevronUp size={14} color={colors.mutedForeground} />

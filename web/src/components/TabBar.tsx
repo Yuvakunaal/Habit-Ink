@@ -15,6 +15,7 @@ import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useSettings } from "@/context/SettingsContext";
 import { toDateKey, useHabits } from "@/context/HabitContext";
+import { useAuth } from "@/context/AuthContext";
 
 // Desktop sidebar nav (includes Journal)
 const SIDEBAR_TABS = [
@@ -38,6 +39,17 @@ const TABS = [
 
 const EW = 248;
 const CW = 64;
+
+function GoogleG({ size = 10 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
 
 export function TabBar() {
   const colors = useColors();
@@ -92,6 +104,12 @@ export function Sidebar() {
   const location = useLocation();
   const { userName, userEmoji } = useSettings();
   const { getCompletionForDate } = useHabits();
+  const { user } = useAuth();
+
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const googleName = user?.user_metadata?.full_name as string | undefined;
+  const googleEmail = user?.email as string | undefined;
+  const displayName = userName || googleName || "Your Journal";
 
   const [hovered, setHovered] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(() =>
@@ -321,19 +339,42 @@ export function Sidebar() {
         {/* User card */}
         {collapsed ? (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: 4, paddingBottom: 4 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: colors.primary + "18",
-                border: `1.5px solid ${colors.primary}30`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{userEmoji}</span>
+            <div style={{ position: "relative", width: 36, height: 36, flexShrink: 0 }}>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  style={{ width: 36, height: 36, borderRadius: 18, objectFit: "cover", border: `1.5px solid ${colors.primary}30` }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: colors.primary + "18",
+                    border: `1.5px solid ${colors.primary}30`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>{userEmoji}</span>
+                </div>
+              )}
+              {/* Google badge */}
+              {avatarUrl && (
+                <div style={{
+                  position: "absolute", bottom: -2, right: -2,
+                  width: 14, height: 14, borderRadius: 7,
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <GoogleG size={8} />
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -349,21 +390,44 @@ export function Sidebar() {
               border: `1px solid ${colors.border}`,
             }}
           >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: colors.primary + "18",
-                border: `1.5px solid ${colors.primary}30`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: 17 }}>{userEmoji}</span>
+            {/* Avatar */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  style={{ width: 34, height: 34, borderRadius: 17, objectFit: "cover", border: `1.5px solid ${colors.primary}30`, display: "block" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: colors.primary + "18",
+                    border: `1.5px solid ${colors.primary}30`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontSize: 17 }}>{userEmoji}</span>
+                </div>
+              )}
+              {avatarUrl && (
+                <div style={{
+                  position: "absolute", bottom: -2, right: -2,
+                  width: 14, height: 14, borderRadius: 7,
+                  backgroundColor: colors.card,
+                  border: `1px solid ${colors.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <GoogleG size={8} />
+                </div>
+              )}
             </div>
+
             <div style={{ flex: 1, minWidth: 0 }}>
               <p
                 style={{
@@ -377,9 +441,23 @@ export function Sidebar() {
                   lineHeight: 1.3,
                 }}
               >
-                {userName || "Your Journal"}
+                {displayName}
               </p>
-              <p style={{ ...font.body, fontSize: 11, color: colors.mutedForeground, margin: 0, whiteSpace: "nowrap" }}>
+              {googleEmail && (
+                <p style={{
+                  ...font.body,
+                  fontSize: 10,
+                  color: colors.mutedForeground,
+                  margin: "1px 0 0",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  opacity: 0.75,
+                }}>
+                  {googleEmail}
+                </p>
+              )}
+              <p style={{ ...font.body, fontSize: 11, color: colors.mutedForeground, margin: "2px 0 0", whiteSpace: "nowrap" }}>
                 {todayTotal > 0
                   ? `${todayDone}/${todayTotal} today${streak > 0 ? ` · 🔥${streak}` : ""}`
                   : streak > 0
