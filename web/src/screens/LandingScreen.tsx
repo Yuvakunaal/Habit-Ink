@@ -784,7 +784,7 @@ function CalendarMockup() {
   const cm: Record<string, string> = { g: GREEN, a: "#E8A838", r: "rgba(190,55,55,0.22)" };
   return (
     <div style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, borderRadius: 20, padding: "22px 22px", flexShrink: 0, boxShadow: "0 12px 44px rgba(0,0,0,0.14)", transform: "rotate(-2deg)" }}>
-      <p style={{ ...CAVEAT, fontSize: 21, fontWeight: 700, color: NAVY, margin: "0 0 12px" }}>June 2025</p>
+      <p style={{ ...CAVEAT, fontSize: 21, fontWeight: 700, color: NAVY, margin: "0 0 12px" }}>June 2026</p>
       <div style={{ display: "flex", gap: 4, marginBottom: 7 }}>
         {["S","M","T","W","T","F","S"].map((d, i) => <div key={i} style={{ width: 22, ...INTER, fontSize: 9, color: MUTED, textAlign: "center", fontWeight: 600 }}>{d}</div>)}
       </div>
@@ -802,7 +802,7 @@ function ChartMockup() {
   ];
   const labels = ["M","T","W","T","F","S","S"];
   return (
-    <div style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, borderRadius: 20, padding: "22px 22px", flexShrink: 0, boxShadow: "0 12px 44px rgba(0,0,0,0.14)", transform: "rotate(1.5deg)" }}>
+    <div style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, borderRadius: 20, padding: "22px 22px", width: 252, flexShrink: 0, boxShadow: "0 12px 44px rgba(0,0,0,0.14)", transform: "rotate(1.5deg)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <p style={{ ...CAVEAT, fontSize: 21, fontWeight: 700, color: NAVY, margin: 0 }}>This Week</p>
         <span style={{ ...INTER, fontSize: 11, color: GREEN, fontWeight: 600 }}>↑ 12%</span>
