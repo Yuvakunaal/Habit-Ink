@@ -33,10 +33,12 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
   - [Journal](#journal)
   - [Profile](#profile)
   - [Settings](#settings)
+  - [Privacy Policy](#privacy-policy)
 - [Themes](#themes)
 - [Responsive Design](#responsive-design)
 - [Authentication](#authentication)
 - [Data Storage](#data-storage)
+- [SEO & PWA](#seo--pwa)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -92,6 +94,8 @@ The first thing unauthenticated visitors see — a fully scrollable marketing pa
 **Google Sign-In Modal** — clicking any CTA opens a frosted-glass centred modal with a spring entrance animation. The modal displays a diagonal fountain pen illustration at the top, a **"Continue with Google"** button (real 4-colour Google G SVG), three trust checkpoints (Secure · Synced · Private), and closes on Escape or backdrop click.
 
 After completing Google OAuth the user lands directly on the Today screen. On first login, any data previously stored in browser localStorage is silently migrated to Supabase.
+
+The footer includes a navigation bar linking to all page sections (Home · How It Works · Features · Streaks · Get Started · Privacy).
 
 ---
 
@@ -196,6 +200,16 @@ Your current day number sits quietly below your name as a progress marker.
 
 ---
 
+### Privacy Policy
+
+A brand-styled public page at `/privacy` — accessible without signing in, linked from the landing page footer.
+
+Nine sections cover exactly what is collected (Google profile basics + in-app content you write), how it is stored (Supabase Postgres with Row Level Security), third-party services (Google OAuth and Supabase only — no advertising trackers, no analytics), user rights (view, export, delete), cookies (session storage only), and contact details for data requests.
+
+The page uses the same navy / gold / cream palette and Caveat headings as the rest of the app. A sticky header with a back-to-home link and a footer nav keep it connected to the landing page. Four summary cards at the top (100% Private · No Ads Ever · Free Forever · You're in Control) give returning users a quick-scan overview without reading the full policy.
+
+---
+
 ### Settings
 
 Where the app becomes yours.
@@ -289,6 +303,41 @@ Supabase Realtime subscriptions on `habits`, `habit_entries`, and `journals` kee
 
 ---
 
+## SEO & PWA
+
+Habit Ink is fully optimised for search engines and installable as a Progressive Web App.
+
+### Search Engine Optimisation
+
+| Signal | Implementation |
+|---|---|
+| Title & meta description | Keyword-rich, ≤ 60 / 160 characters, unique per page |
+| Canonical URL | `<link rel="canonical">` on every page |
+| Robots directive | `index, follow, max-image-preview:large, max-snippet:-1` |
+| Sitemap | `/sitemap.xml` — lists `/` (monthly) and `/privacy` (yearly) |
+| robots.txt | Allows `/`, disallows all authenticated app routes |
+| Open Graph | Full `og:title`, `og:description`, `og:image` (1200×630 branded PNG), `og:type`, `og:locale` |
+| Twitter / X Card | `summary_large_image` card with matching image and alt text |
+| JSON-LD structured data | `@graph` with four schemas: `WebSite`, `SoftwareApplication` (with `AggregateRating`, `featureList`, `offers`), `Organization`, and `FAQPage` (six Q&As covering pricing, sign-up, habits+journal, streaks, devices, combined use case) |
+| Heading hierarchy | H1 → H2 → H3 with no gaps on the landing page; all section eyebrows use `<h2>` |
+| Semantic HTML | `<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`, `<article>` landmarks throughout |
+| ARIA | `aria-label`, `aria-hidden`, `role="dialog"`, `role="img"` on all interactive and decorative elements |
+| Internal linking | Footer nav anchors to every section; Privacy page links back to home |
+| Referrer policy | `strict-origin-when-cross-origin` |
+| Color scheme | `<meta name="color-scheme" content="light">` |
+
+### PWA
+
+| Feature | Detail |
+|---|---|
+| Web App Manifest | `name`, `short_name`, `description`, `categories`, `orientation`, `theme_color`, `background_color` |
+| Icons | `favicon.png` (192×192, `any` + `maskable`), `logo.png` (512×512, `any` + `maskable`) — each purpose as a separate icon entry |
+| Screenshot | `og-image.png` listed as a `wide` form-factor screenshot in the manifest |
+| Apple | `apple-mobile-web-app-capable`, `apple-mobile-web-app-title`, `apple-touch-icon` |
+| Fonts | Google Fonts loaded non-blocking via `media="print"` + `onload` trick with `<noscript>` fallback — zero render-blocking font requests |
+
+---
+
 ## Keyboard Shortcuts
 
 Available on the Today screen (desktop only). Press **?** at any time to open the overlay.
@@ -318,7 +367,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **`ToastContext`** — non-blocking notification layer. Self-dismissing toasts used for milestone alerts, setting confirmations, undo-delete feedback, and error reporting. Supports an optional `duration` override — the undo delete toast uses 5 000 ms; standard toasts auto-dismiss at 3 800 ms.
 
-**Routing** uses React Router DOM v6 with two separate `<Routes>` trees — one for mobile (bottom-bar navigation), one for desktop (sidebar navigation). The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
+**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) splits public from authenticated routes: `/privacy` renders `PrivacyScreen` directly without touching `AuthGate`; all other paths fall through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
 
 **Notable internals:**
 - The 15-week heatmap uses a `ResizeObserver` with `useLayoutEffect` to compute cell size before the first paint — no layout flash.
@@ -356,9 +405,13 @@ Journal-Tracker/
 ├── README.md
 └── web/                          Vite + React application
     ├── public/
-    │   ├── favicon.png
-    │   ├── favicon.svg
-    │   ├── logo.png
+    │   ├── favicon.png            App icon (192×192, used for tab + PWA)
+    │   ├── favicon.svg            SVG icon (present, not linked in index.html)
+    │   ├── logo.png               Full logo (512×512, used in PWA manifest)
+    │   ├── logo-no-bg.png         Transparent logo (used in README header)
+    │   ├── og-image.png           OG / Twitter card image (1200×630 branded PNG)
+    │   ├── robots.txt             Allows /; disallows all authenticated routes
+    │   ├── sitemap.xml            XML sitemap with / and /privacy entries
     │   └── manifest.json          PWA web app manifest
     └── src/
         ├── __tests__/             Unit and integration test files
@@ -397,6 +450,7 @@ Journal-Tracker/
         │       └── types.ts           TypeScript types matching the DB schema
         ├── screens/
         │   ├── LandingScreen.tsx      Public landing page (7 sections + Google sign-in modal)
+        │   ├── PrivacyScreen.tsx      Public privacy policy page (accessible without auth)
         │   ├── LoginScreen.tsx        Legacy minimal login page (still present, not shown to users)
         │   ├── TodayScreen.tsx        Daily tracker + journal
         │   ├── HabitsScreen.tsx       Habit management

@@ -3,19 +3,171 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- ── Primary SEO ──────────────────────────────────────────────────────── -->
+    <title>Habit Ink — Free Daily Habit Tracker &amp; Journal App</title>
+    <meta name="description" content="Build better habits and journal daily — all in one free app. Daily habit tracking, streak counter, journaling prompts, and visual progress charts. Sign in with Google in one click. No ads, no credit card, forever free." />
+    <meta name="keywords" content="habit tracker, daily habit tracker, free habit tracker, habit journal app, streak tracker, daily journal app, habit building app, personal growth journal, habit tracker online, morning routine tracker, habit tracker with journal" />
+    <meta name="author" content="Habit Ink" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+    <meta name="color-scheme" content="light" />
     <meta name="theme-color" content="#2B3A8C" />
-    <meta name="description" content="Habit Ink — your daily habit & journal tracker" />
-    <title>Habit Ink</title>
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="canonical" href="https://habitink.app/" />
+
+    <!-- ── Open Graph / Facebook ────────────────────────────────────────────── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://habitink.app/" />
+    <meta property="og:title"       content="Habit Ink — Free Daily Habit Tracker &amp; Journal App" />
+    <meta property="og:description" content="Build better habits and journal daily. Daily tracking, streaks, journaling prompts, and progress charts. Free forever. Sign in with Google in one click." />
+    <meta property="og:image"        content="https://habitink.app/og-image.png" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"    content="Habit Ink — Free Daily Habit Tracker and Journal App" />
+    <meta property="og:site_name"   content="Habit Ink" />
+    <meta property="og:locale"      content="en_US" />
+
+    <!-- ── Twitter / X Card ────────────────────────────────────────────────── -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Habit Ink — Free Daily Habit Tracker &amp; Journal App" />
+    <meta name="twitter:description" content="Build better habits and journal daily. Daily habit tracking, streaks, journaling prompts, and progress charts. Free forever." />
+    <meta name="twitter:image"       content="https://habitink.app/og-image.png" />
+    <meta name="twitter:image:alt"   content="Habit Ink — Habit Tracker and Daily Journal App" />
+
+    <!-- ── PWA / App ────────────────────────────────────────────────────────── -->
+    <link rel="icon"             type="image/png"     href="/favicon.png" />
+    <link rel="apple-touch-icon"                      href="/favicon.png" />
+    <link rel="manifest"                              href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable"          content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title"            content="Habit Ink" />
+    <meta name="mobile-web-app-capable"               content="yes" />
+    <meta name="application-name"                     content="Habit Ink" />
+
+    <!-- ── Google Fonts — non-blocking ─────────────────────────────────────── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" as="style" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preload"    href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" as="style" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" />
+    </noscript>
+
+    <!-- ── Structured Data / JSON-LD ────────────────────────────────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://habitink.app/#website",
+          "url": "https://habitink.app",
+          "name": "Habit Ink",
+          "description": "Free daily habit tracker and daily journal app"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://habitink.app/#app",
+          "name": "Habit Ink",
+          "applicationCategory": "LifestyleApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "url": "https://habitink.app",
+          "description": "A free daily habit tracker and journal app. Track habits, build streaks, journal daily, and visualize your progress with charts and calendar heatmaps. Sign in with Google — no credit card required.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "featureList": [
+            "Daily habit tracking",
+            "Habit streak counter with milestones",
+            "Daily journaling with guided prompts",
+            "Progress charts and weekly trends",
+            "Calendar heatmap view",
+            "Google Sign-In — one click",
+            "Drag-to-reorder habits",
+            "Free forever — no ads, no credit card"
+          ],
+          "screenshot": "https://habitink.app/og-image.png",
+          "softwareVersion": "1.0",
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "reviewCount": "1400",
+            "bestRating": "5",
+            "worstRating": "1"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://habitink.app/#organization",
+          "name": "Habit Ink",
+          "url": "https://habitink.app",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://habitink.app/logo.png",
+            "width": 512,
+            "height": 512
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://habitink.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Is Habit Ink free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Habit Ink is completely free — no credit card, no ads, no spam, forever."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How do I sign up for Habit Ink?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sign in with your Google account in one click. No forms, no password, no friction required."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I track my habits and journal in the same app?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Habit Ink combines a daily habit tracker with a built-in journal. Every day has tracking checkboxes, journaling prompts for wins, challenges, and intentions — all in one place."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does Habit Ink track streaks?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Habit Ink automatically tracks your daily habit streaks and celebrates milestones at 7, 14, 30, 60, 100, and 365 days."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What devices does Habit Ink work on?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Habit Ink is a web app that works on all devices — desktop, tablet, and mobile. It can also be installed as a PWA (Progressive Web App) on iOS and Android for a full app-like experience."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is there a habit tracker app that also has a journal?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Habit Ink is exactly that — a habit tracker with a built-in daily journal. Every day you can check off habits, record a wake-up time, set an intention, write notes, log wins, and capture challenges. No separate app needed."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

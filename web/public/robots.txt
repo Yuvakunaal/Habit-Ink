@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Auth-only app routes — no public content behind these
+Disallow: /habits
+Disallow: /journal
+Disallow: /calendar
+Disallow: /progress
+Disallow: /profile
+Disallow: /settings
+
+Sitemap: https://habitink.app/sitemap.xml

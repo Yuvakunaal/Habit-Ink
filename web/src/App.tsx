@@ -19,6 +19,7 @@ import ProgressScreen from "@/screens/ProgressScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import JournalScreen from "@/screens/JournalScreen";
+import PrivacyScreen from "@/screens/PrivacyScreen";
 
 function AppLayout() {
   const colors = useColors();
@@ -102,9 +103,14 @@ export function App() {
       <SettingsProvider>
         <ToastProvider>
           <HabitProvider>
-            <AuthGate>
-              <AppLayout />
-            </AuthGate>
+            <Routes>
+              <Route path="/privacy" element={<PrivacyScreen />} />
+              <Route path="*" element={
+                <AuthGate>
+                  <AppLayout />
+                </AuthGate>
+              } />
+            </Routes>
           </HabitProvider>
         </ToastProvider>
       </SettingsProvider>
