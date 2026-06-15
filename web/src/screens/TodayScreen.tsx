@@ -42,7 +42,6 @@ const JOURNAL_PROMPTS = [
 ];
 
 const MILESTONES = [7, 14, 30, 60, 100, 200, 365];
-const HABIT_ORDER_KEY = "@habitink/habitOrder";
 
 function formatDisplayDate(date: Date): string {
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -203,10 +202,8 @@ export default function TodayScreen() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const confettiFiredRef = useRef<string | null>(null);
 
-  // Persistent drag-to-reorder order
-  const [habitOrder, setHabitOrder] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(HABIT_ORDER_KEY) ?? "[]"); } catch { return []; }
-  });
+  // Persistent drag-to-reorder order (backed by Supabase via SettingsContext)
+  const { habitOrder, setHabitOrder } = useSettings();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   // Ref so drag handlers always see the latest order without stale closures
@@ -297,7 +294,6 @@ export default function TodayScreen() {
     // Update ref immediately so next dragover sees the new order
     habitOrderRef.current = newOrder;
     setHabitOrder(newOrder);
-    localStorage.setItem(HABIT_ORDER_KEY, JSON.stringify(newOrder));
   };
 
   const handleDragEnd = () => {

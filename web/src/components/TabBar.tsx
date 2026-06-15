@@ -112,9 +112,7 @@ export function Sidebar() {
   const displayName = userName || googleName || "Your Journal";
 
   const [hovered, setHovered] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(() =>
-    localStorage.getItem("sidebar-collapsed") === "true"
-  );
+  const { sidebarCollapsed: collapsed, setSidebarCollapsed } = useSettings();
 
   const todayKey = toDateKey(new Date());
   const { done: todayDone, total: todayTotal } = getCompletionForDate(todayKey);
@@ -130,9 +128,7 @@ export function Sidebar() {
   }
 
   const toggle = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    localStorage.setItem("sidebar-collapsed", String(next));
+    setSidebarCollapsed(!collapsed);
   };
 
   const w = collapsed ? CW : EW;

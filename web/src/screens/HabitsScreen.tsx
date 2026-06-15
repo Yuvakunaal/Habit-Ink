@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Check, X, CheckCircle, Hash, Slash, Clock, Edit3, Archive, ArchiveRestore, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Plus, Pencil, Check, X, CheckCircle, Hash, Slash, Clock, Edit3, Archive, ArchiveRestore, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 
 import { Habit, HabitType, ScheduleType, toDateKey, useHabits } from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useIsWide } from "@/hooks/useIsDesktop";
+import { useToast } from "@/context/ToastContext";
 import { Modal } from "@/components/Modal";
 
 const EMOJIS = [
@@ -79,9 +80,15 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
   const [customDays, setCustomDays] = useState<number[]>([1, 3, 5]);
   const [emoji, setEmoji] = useState("✅");
   const [color, setColor] = useState("#2B3A8C");
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const deleteConfirmTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setDeleteConfirming(false);
+      clearTimeout(deleteConfirmTimer.current);
+      return;
+    }
     setName(editing?.name ?? "");
     setSchedule(editing?.schedule ?? "daily");
     setCustomDays(editing?.customDays ?? [1, 3, 5]);
@@ -164,8 +171,25 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
     display: "block",
   };
 
+  const handleDeleteClick = () => {
+    if (!deleteConfirming) {
+      setDeleteConfirming(true);
+      deleteConfirmTimer.current = setTimeout(() => setDeleteConfirming(false), 4000);
+    } else {
+      clearTimeout(deleteConfirmTimer.current);
+      onDelete?.(editing!.id);
+      onClose();
+    }
+  };
+
   return (
     <Modal visible={visible} onClose={onClose}>
+      <style>{`
+        @keyframes deleteConfirmIn {
+          from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
       <div style={{ padding: 20, paddingBottom: 32 }}>
         {/* Header */}
         <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -355,19 +379,52 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
           )
         )}
 
-        {/* Permanent Delete */}
+        {/* Permanent Delete — two-tap inline confirm */}
         {editing && onDelete && (
-          <button
-            onClick={() => {
-              if (window.confirm(`Permanently delete "${editing.name}"? This cannot be undone.`)) {
-                onDelete(editing.id);
-                onClose();
-              }
-            }}
-            style={{ marginTop: 8, width: "100%", paddingTop: 10, paddingBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "none", border: "none", cursor: "pointer" }}
-          >
-            <span style={{ ...font.body, fontSize: font.size(13), color: colors.destructive, textDecoration: "underline" }}>Delete permanently</span>
-          </button>
+          <div style={{ marginTop: 10 }}>
+            {!deleteConfirming ? (
+              <button
+                onClick={handleDeleteClick}
+                style={{ width: "100%", paddingTop: 10, paddingBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "none", border: "none", cursor: "pointer" }}
+              >
+                <Trash2 size={13} color={colors.mutedForeground} />
+                <span style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground }}>
+                  Delete permanently
+                </span>
+              </button>
+            ) : (
+              <div
+                style={{
+                  backgroundColor: colors.destructive + "0d",
+                  border: `1.5px solid ${colors.destructive}40`,
+                  borderRadius: 14,
+                  padding: "14px 16px",
+                  animation: "deleteConfirmIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <Trash2 size={15} color={colors.destructive} />
+                  <span style={{ ...font.body, fontSize: font.size(13), color: colors.destructive, lineHeight: 1.4 }}>
+                    Delete <strong>"{editing.name}"</strong>? All tracked history will be lost.
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => { clearTimeout(deleteConfirmTimer.current); setDeleteConfirming(false); }}
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: colors.muted, border: `1px solid ${colors.border}`, ...font.body, fontSize: font.size(14), color: colors.foreground, cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteClick}
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 10, backgroundColor: colors.destructive, border: "none", ...font.label, fontSize: font.size(14), fontWeight: 700, color: "#fff", cursor: "pointer" }}
+                  >
+                    Yes, delete
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </Modal>
@@ -468,13 +525,48 @@ export default function HabitsScreen() {
   const colors = useColors();
   const font = useFont();
   const { habits, deleteHabit, updateHabit } = useHabits();
+  const { showToast } = useToast();
   const isWide = useIsWide();
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<Habit | undefined>();
   const [showArchived, setShowArchived] = useState(false);
 
-  const activeHabits = habits.filter(h => !h.archived);
-  const archivedHabits = habits.filter(h => h.archived);
+  // IDs visually removed but DB delete is pending undo window
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
+  const pendingDeleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const handleDelete = (id: string) => {
+    const habitName = habits.find((h) => h.id === id)?.name ?? "Habit";
+
+    // Hide from UI immediately
+    setPendingDeleteIds((prev) => [...prev, id]);
+
+    // Schedule real DB delete after undo window
+    const timer = setTimeout(() => {
+      deleteHabit(id);
+      setPendingDeleteIds((prev) => prev.filter((x) => x !== id));
+      pendingDeleteTimers.current.delete(id);
+    }, 5000);
+    pendingDeleteTimers.current.set(id, timer);
+
+    // Undo toast — visible for 5s
+    showToast(
+      `"${habitName}" deleted`,
+      "info",
+      {
+        label: "Undo",
+        onClick: () => {
+          clearTimeout(pendingDeleteTimers.current.get(id));
+          pendingDeleteTimers.current.delete(id);
+          setPendingDeleteIds((prev) => prev.filter((x) => x !== id));
+        },
+      },
+      5000,
+    );
+  };
+
+  const activeHabits = habits.filter((h) => !h.archived && !pendingDeleteIds.includes(h.id));
+  const archivedHabits = habits.filter((h) => h.archived && !pendingDeleteIds.includes(h.id));
 
   const openEdit = (habit: Habit) => { setEditing(habit); setShowAdd(true); };
   const closeModal = () => { setShowAdd(false); setEditing(undefined); };
@@ -567,7 +659,7 @@ export default function HabitsScreen() {
       {/* List */}
       <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
         <div style={{ maxWidth: isWide ? 1080 : undefined, margin: isWide ? "0 auto" : undefined, padding: isWide ? "16px 28px 32px" : "16px 16px 32px" }}>
-          {activeHabits.length === 0 && archivedHabits.length === 0 ? emptyState : (
+          {activeHabits.length === 0 && archivedHabits.length === 0 && pendingDeleteIds.length === 0 ? emptyState : (
             <>
               {/* Active habits */}
               <div style={isWide ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" } : {}}>
@@ -615,7 +707,7 @@ export default function HabitsScreen() {
         visible={showAdd}
         editing={editing}
         onClose={closeModal}
-        onDelete={deleteHabit}
+        onDelete={handleDelete}
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
       />

@@ -92,13 +92,13 @@ export function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <HabitProvider>
-          <ToastProvider>
+        <ToastProvider>
+          <HabitProvider>
             <AuthGate>
               <AppLayout />
             </AuthGate>
-          </ToastProvider>
-        </HabitProvider>
+          </HabitProvider>
+        </ToastProvider>
       </SettingsProvider>
     </AuthProvider>
   );

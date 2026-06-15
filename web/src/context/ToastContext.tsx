@@ -16,7 +16,8 @@ interface ToastCtx {
   showToast: (
     message: string,
     type?: ToastType,
-    action?: { label: string; onClick: () => void }
+    action?: { label: string; onClick: () => void },
+    duration?: number,
   ) => void;
 }
 
@@ -150,11 +151,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     (
       message: string,
       type: ToastType = "info",
-      action?: { label: string; onClick: () => void }
+      action?: { label: string; onClick: () => void },
+      duration = 3800,
     ) => {
       const id = Math.random().toString(36).slice(2, 10);
       setToasts((prev) => [...prev.slice(-3), { id, message, type, action }]);
-      setTimeout(() => dismiss(id), 3800);
+      setTimeout(() => dismiss(id), duration);
     },
     [dismiss]
   );
