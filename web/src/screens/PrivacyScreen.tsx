@@ -184,6 +184,25 @@ export default function PrivacyScreen() {
     document.title = "Privacy Policy — Habit Ink";
     window.scrollTo(0, 0);
 
+    // Point canonical at /privacy (index.html defaults to /)
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const prevCanonical = canonical?.getAttribute("href") ?? null;
+    canonical?.setAttribute("href", "https://habitink.app/privacy");
+
+    // Inject BreadcrumbList schema
+    const crumb = document.createElement("script");
+    crumb.type = "application/ld+json";
+    crumb.id   = "privacy-breadcrumb-schema";
+    crumb.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home",           "item": "https://habitink.app/" },
+        { "@type": "ListItem", "position": 2, "name": "Privacy Policy", "item": "https://habitink.app/privacy" },
+      ],
+    });
+    document.head.appendChild(crumb);
+
     // Unlock scroll for this page
     const html = document.documentElement;
     const body = document.body;
@@ -198,6 +217,8 @@ export default function PrivacyScreen() {
     if (root) { root.style.overflow = "auto"; root.style.height = "auto"; }
 
     return () => {
+      if (canonical && prevCanonical) canonical.setAttribute("href", prevCanonical);
+      document.getElementById("privacy-breadcrumb-schema")?.remove();
       html.style.overflow = prev.htmlO; html.style.height = prev.htmlH;
       body.style.overflow = prev.bodyO; body.style.height = prev.bodyH;
       if (root) { root.style.overflow = prev.rootO; root.style.height = prev.rootH; }

@@ -34,6 +34,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
   - [Profile](#profile)
   - [Settings](#settings)
   - [Privacy Policy](#privacy-policy)
+  - [404 — Not Found](#404--not-found)
 - [Themes](#themes)
 - [Responsive Design](#responsive-design)
 - [Authentication](#authentication)
@@ -75,27 +76,29 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 
 ### Landing Page
 
-The first thing unauthenticated visitors see — a fully scrollable marketing page with seven distinct sections and a Google sign-in modal.
+The first thing unauthenticated visitors see — a fully scrollable marketing page with eight distinct sections and a Google sign-in modal.
 
-**Hero** — full-viewport opening with a dot-grid background, an animated headline ("Your habits. Your journal. One beautiful place."), a live streak widget (30 glowing dots, animated on load), social proof showing "1,400+ people building better habits", and a primary **"Start your first day"** CTA. A sticky header fades in after scrolling 75% of the viewport and mirrors the CTA.
+**Hero** — full-viewport opening with a dot-grid background, an animated three-line headline ("Track habits. / Journal daily. / Free, forever." — each word slides in sequentially with a gold SVG underline drawing on the final line), a live 7-day streak widget animated on load, social proof showing "1,400+ people building better habits", and a primary **"Start your first day"** CTA. A sticky header fades in after scrolling 75% of the viewport and mirrors the CTA.
 
-**How It Works** — three numbered steps walking new users through the core flow: sign in with Google (🔑), set daily intentions and check habits (📝), and keep your streak alive (🔥).
+**How It Works** — eyebrow label + keyword H2 ("Three steps to build better habits.") followed by three numbered steps: sign in with Google (🔑), set intentions and check habits (📝), and keep your streak alive (🔥).
 
-**Three Truths** — three hover-reveal cards for the app's three core pillars (Track · Journal · Progress) with subtle flip animations.
+**Three Truths** — H2 heading "Daily habit tracker. Built-in journal. Real progress." introduces three hover-reveal cards for the app's core pillars (Track · Journal · Progress) with colour-invert animations on hover.
 
-**Screens in Focus** — three alternating scroll-reveal rows, each pairing a section title and description with a pure-CSS mockup of the corresponding app screen (Today's habit table, the calendar heatmap, the progress chart).
+**Screens in Focus** — three alternating scroll-reveal rows, each pairing a headline and description with a pure-CSS mockup of the corresponding app screen (Today's habit table, the calendar heatmap, the progress chart).
 
-**Streak Proof** — a 30-dot animated streak visualisation with a motivational subheading, demonstrating what a real streak looks like inside the app.
+**Streak Proof** — 30 animated dots fill in one by one (27 green, 3 missed) under the H2 "Build your longest habit streak yet.", demonstrating what a real streak looks like.
 
 **Quote Moment** — a full-width pull-quote with a giant decorative `"` backdrop, attributed to Aristotle: "We are what we repeatedly do. Excellence, then, is not an act, but a habit."
 
-**Dark Close** — a high-contrast closing section (`#13183A` background, torn paper clip-path edge) with the main headline repeated, a ghost InkPen3D illustration, and the final CTA.
+**FAQ** — six question-and-answer cards in a two-column grid (single column on mobile), scroll-animated. Questions cover pricing, sign-up, combined habit+journal use, streak tracking, device support, and privacy. Content mirrors the FAQPage JSON-LD schema exactly so Google can serve rich results.
+
+**Dark Close** — a high-contrast closing section (`#13183A` background, torn paper clip-path edge) with H2 "Start your habit streak today.", a ghost InkPen3D illustration, and the final gold CTA button.
 
 **Google Sign-In Modal** — clicking any CTA opens a frosted-glass centred modal with a spring entrance animation. The modal displays a diagonal fountain pen illustration at the top, a **"Continue with Google"** button (real 4-colour Google G SVG), three trust checkpoints (Secure · Synced · Private), and closes on Escape or backdrop click.
 
 After completing Google OAuth the user lands directly on the Today screen. On first login, any data previously stored in browser localStorage is silently migrated to Supabase.
 
-The footer includes a navigation bar linking to all page sections (Home · How It Works · Features · Streaks · Get Started · Privacy).
+The footer includes a navigation bar: Home · How It Works · Features · FAQ · Privacy.
 
 ---
 
@@ -197,6 +200,21 @@ Log your **weight** with a **kg / lbs toggle** and your **height** with a **cm /
 All profile changes sync to your Supabase account automatically — visible immediately on any device you sign into.
 
 Your current day number sits quietly below your name as a progress marker.
+
+---
+
+### 404 — Not Found
+
+A full-page, theme-aware error screen shown to authenticated users who navigate to any URL that doesn't match a known route.
+
+The page renders outside `AppLayout` — no sidebar, no tab bar — so it fills the entire viewport. It uses the active theme's colour tokens and font settings, adapting to all five themes automatically.
+
+Design: large `404` in the heading font and primary colour; a habit-row mockup showing "📄 This page · ✗ Missed" with a red left accent stripe (identical to the real habit cards); seven animated streak dots (6 filled green, 1 broken red) that spring in one by one; copy "You wandered off the path. / This page doesn't exist — but your habits do."; a themed "↩ Back to Today" button; and a subtle dot-grid background. The whole composition fades and slides up on mount.
+
+**Routing behaviour:**
+- **Not logged in + unknown URL** → `AuthGate` immediately redirects to `/` (landing page). The 404 screen is never shown.
+- **Logged in + unknown URL** → `AuthGate` intercepts before `AppLayout` mounts and renders `NotFoundScreen` directly as a full-page view.
+- **Logged in + known URL** → normal app routing.
 
 ---
 
@@ -318,11 +336,13 @@ Habit Ink is fully optimised for search engines and installable as a Progressive
 | robots.txt | Allows `/`, disallows all authenticated app routes |
 | Open Graph | Full `og:title`, `og:description`, `og:image` (1200×630 branded PNG), `og:type`, `og:locale` |
 | Twitter / X Card | `summary_large_image` card with matching image and alt text |
-| JSON-LD structured data | `@graph` with four schemas: `WebSite`, `SoftwareApplication` (with `AggregateRating`, `featureList`, `offers`), `Organization`, and `FAQPage` (six Q&As covering pricing, sign-up, habits+journal, streaks, devices, combined use case) |
-| Heading hierarchy | H1 → H2 → H3 with no gaps on the landing page; all section eyebrows use `<h2>` |
+| JSON-LD structured data | `@graph` with four schemas: `WebSite` (with `SearchAction` / sitelinks search box), `SoftwareApplication` (`featureList`, `offers`, `operatingSystem: "Web Browser"`), `Organization` (with `sameAs` GitHub link), and `FAQPage` (six Q&As matching the visible FAQ section exactly) |
+| BreadcrumbList schema | Injected dynamically on `/privacy` via `useEffect` — restores on unmount |
+| Dynamic canonical | `/privacy` page updates `<link rel="canonical">` to its own URL on mount and restores it on unmount |
+| Heading hierarchy | H1 → H2 → H3 with no gaps; section eyebrows are `<p>` elements — each section has a keyword-rich `<h2>` below |
 | Semantic HTML | `<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`, `<article>` landmarks throughout |
 | ARIA | `aria-label`, `aria-hidden`, `role="dialog"`, `role="img"` on all interactive and decorative elements |
-| Internal linking | Footer nav anchors to every section; Privacy page links back to home |
+| Internal linking | Footer nav: Home · How It Works · Features · FAQ · Privacy; Privacy page links back to home |
 | Referrer policy | `strict-origin-when-cross-origin` |
 | Color scheme | `<meta name="color-scheme" content="light">` |
 
@@ -359,7 +379,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **Four contexts power the whole app:**
 
-**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` wraps the entire app and renders `LandingScreen` when there is no active session, and an `AppSkeleton` loading spinner while settings and habit data are being fetched from the database.
+**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` sits inside the outer `<Routes>` and handles four states: (1) auth loading → `AppSkeleton`; (2) no session at `/` → `LandingScreen`; (3) no session at any other path → `<Navigate to="/" replace />`; (4) session present but data not yet loaded → `AppSkeleton`; (5) session present + unknown route → `NotFoundScreen` rendered full-page without sidebar; (6) session present + known route → renders children (`AppLayout`).
 
 **`HabitContext`** — core data layer. All habits, all entries, all journal records. On login: runs the optional one-time localStorage migration, then fetches all four tables in parallel. Mutations are optimistic — state updates instantly and a background Supabase write follows. Journal saves are debounced per date (800 ms) to batch rapid keystrokes into a single write. Supabase Realtime subscriptions on all three tables keep every open tab in sync. Exposes streak calculations, completion rates, date-aware schedule checks, and journal helpers.
 
@@ -417,7 +437,7 @@ Journal-Tracker/
         ├── __tests__/             Unit and integration test files
         ├── components/
         │   ├── AppSkeleton.tsx       Loading spinner shown while DB data loads
-        │   ├── AuthGate.tsx          Renders LandingScreen (no session) or AppSkeleton (loading)
+        │   ├── AuthGate.tsx          Auth + route guard: redirects unknown paths, renders NotFoundScreen for logged-in 404s
         │   ├── CompletionRing.tsx    Circular SVG progress indicator
         │   ├── ConfirmDialog.tsx     Reusable themed confirmation modal
         │   ├── Confetti.tsx          Canvas confetti animation
@@ -449,8 +469,9 @@ Journal-Tracker/
         │       ├── mappers.ts         camelCase ↔ snake_case row converters
         │       └── types.ts           TypeScript types matching the DB schema
         ├── screens/
-        │   ├── LandingScreen.tsx      Public landing page (7 sections + Google sign-in modal)
+        │   ├── LandingScreen.tsx      Public landing page (8 sections + Google sign-in modal)
         │   ├── PrivacyScreen.tsx      Public privacy policy page (accessible without auth)
+        │   ├── NotFoundScreen.tsx     Full-page themed 404 (shown to logged-in users on unknown routes)
         │   ├── LoginScreen.tsx        Legacy minimal login page (still present, not shown to users)
         │   ├── TodayScreen.tsx        Daily tracker + journal
         │   ├── HabitsScreen.tsx       Habit management
@@ -462,6 +483,7 @@ Journal-Tracker/
         ├── App.tsx                    Root layout + routing + provider order
         ├── main.tsx                   Entry point
         └── vite-env.d.ts              Vite environment type declarations
+    └── vercel.json                Vercel deployment config — SPA rewrite rule + build settings
 ```
 
 ---

@@ -378,9 +378,9 @@ const DAYS = ["Su", "M", "T", "W", "T", "F", "S"] as const;
 const UL_LEN = 340;
 
 const HERO_LINES = [
-  { words: ["Build", "habits."],           offset: 0 },
-  { words: ["Journal", "daily."],          offset: 2 },
-  { words: ["Watch", "yourself", "grow."], offset: 4 },
+  { words: ["Track",   "habits."],  offset: 0 },
+  { words: ["Journal", "daily."],   offset: 2 },
+  { words: ["Free,",   "forever."], offset: 4 },
 ];
 
 const PROOF_AVATARS: [string, string][] = [
@@ -499,7 +499,7 @@ function Hero({ onOpenModal }: { onOpenModal: () => void }) {
 
         {/* Subline */}
         <p style={{ ...INTER, fontSize: isMobile ? 16 : 18, color: MUTED, margin: "36px 0 0", maxWidth: 460, lineHeight: 1.65, opacity: linesVisible ? 1 : 0, transform: linesVisible ? "translateY(0)" : "translateY(16px)", transition: "all 0.6s ease 560ms" }}>
-          The simplest way to show up for yourself — every single day.
+          Build streaks, write daily, and see real progress — completely free. No subscription, no app store.
         </p>
 
         {/* Social proof */}
@@ -624,8 +624,11 @@ function HowItWorks() {
 
   return (
     <section id="how-it-works" aria-label="How the Habit Ink habit tracker works" style={{ backgroundColor: BG, padding: isMobile ? "72px 24px" : "96px 56px", borderTop: `1px solid ${BORDER}` }}>
-      <h2 style={{ ...INTER, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", color: MUTED, textTransform: "uppercase", textAlign: "center", margin: "0 0 56px" }}>
+      <p style={{ ...INTER, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", color: MUTED, textTransform: "uppercase", textAlign: "center", margin: "0 0 12px" }}>
         HOW IT WORKS
+      </p>
+      <h2 style={{ ...CAVEAT, fontWeight: 700, fontSize: isMobile ? 36 : 48, color: NAVY, textAlign: "center", margin: "0 0 52px", lineHeight: 1.15 }}>
+        Three steps to build better habits.
       </h2>
       <div ref={ref} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 44 : 0, maxWidth: 860, margin: "0 auto", position: "relative", alignItems: "flex-start" }}>
         {!isMobile && (
@@ -671,7 +674,7 @@ function ThreeTruths() {
         EVERYTHING YOU NEED
       </p>
       <h2 style={{ ...CAVEAT, fontWeight: 700, fontSize: isMobile ? 40 : 56, color: NAVY, margin: "0 0 52px", lineHeight: 1.1 }}>
-        Nothing you don't.
+        Daily habit tracker. Built-in journal. Real progress.
       </h2>
       <div ref={ref} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 20, maxWidth: 940, margin: "0 auto", alignItems: "stretch" }}>
         {TRUTH_CARDS.map((card, i) => {
@@ -870,7 +873,7 @@ function StreakProof() {
     <section id="streak-tracking" aria-label="Habit streak tracking — miss a day and keep going" style={{ backgroundColor: BG, padding: isMobile ? "80px 24px" : "100px 56px", textAlign: "center", borderTop: `1px solid ${BORDER}` }}>
       <p style={{ ...INTER, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em", color: MUTED, textTransform: "uppercase", margin: "0 0 20px" }}>REAL PROGRESS</p>
       <h2 style={{ ...CAVEAT, fontWeight: 700, fontSize: isMobile ? 40 : 54, color: NAVY, margin: "0 0 16px" }}>
-        Miss a day? Just start again.
+        Build your longest habit streak yet.
       </h2>
       <p style={{ ...INTER, fontSize: 16, color: MUTED, margin: "0 auto 52px", maxWidth: 480, lineHeight: 1.65 }}>
         Habit Ink doesn't punish you for being human. It just helps you keep going.
@@ -950,6 +953,102 @@ function QuoteMoment() {
   );
 }
 
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+const FAQ_ITEMS = [
+  {
+    q: "Is Habit Ink free?",
+    a: "Yes. Habit Ink is completely free — no credit card, no ads, no spam, forever.",
+  },
+  {
+    q: "How do I sign up for Habit Ink?",
+    a: "Sign in with your Google account in one click. No forms, no password, no friction required.",
+  },
+  {
+    q: "Can I track habits and journal in the same app?",
+    a: "Yes. Habit Ink combines a daily habit tracker with a built-in journal. Every day has tracking checkboxes, journaling prompts for wins, challenges, and intentions — all in one place.",
+  },
+  {
+    q: "Does Habit Ink track streaks automatically?",
+    a: "Yes. Habit Ink tracks your daily habit streaks and celebrates milestones at 7, 14, 30, 60, 100, and 365 days.",
+  },
+  {
+    q: "What devices does Habit Ink work on?",
+    a: "Any device with a browser — desktop, tablet, iPhone, Android. You can also install it as a PWA for a full app experience without the app store.",
+  },
+  {
+    q: "Is my journal private?",
+    a: "Completely. Your journal entries are stored securely in your personal database. We never read them, never share them, and never use them for advertising.",
+  },
+] as const;
+
+function FAQSection() {
+  const isMobile = useIsMobile();
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref);
+
+  return (
+    <section
+      id="faq"
+      aria-label="Frequently asked questions about Habit Ink"
+      style={{
+        backgroundColor: BG,
+        padding: isMobile ? "80px 24px" : "100px 56px",
+        borderTop: `1px solid ${BORDER}`,
+      }}
+    >
+      <p style={{
+        ...INTER, fontSize: 11, fontWeight: 600, letterSpacing: "0.18em",
+        color: MUTED, textTransform: "uppercase", textAlign: "center", margin: "0 0 12px",
+      }}>
+        FAQ
+      </p>
+      <h2 style={{
+        ...CAVEAT, fontWeight: 700, fontSize: isMobile ? 38 : 52,
+        color: NAVY, textAlign: "center", margin: "0 0 52px", lineHeight: 1.1,
+      }}>
+        Got questions? We've got answers.
+      </h2>
+      <div
+        ref={ref}
+        style={{
+          maxWidth: 840,
+          margin: "0 auto",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gap: 20,
+        }}
+      >
+        {FAQ_ITEMS.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              backgroundColor: "#fff",
+              border: `1.5px solid ${BORDER}`,
+              borderRadius: 18,
+              padding: "26px 24px",
+              opacity: inView ? 1 : 0,
+              transform: inView ? "translateY(0)" : "translateY(22px)",
+              transition: `opacity 0.5s ease ${i * 70}ms, transform 0.5s ease ${i * 70}ms`,
+            }}
+          >
+            <h3 style={{
+              ...CAVEAT, fontWeight: 700, fontSize: 21, color: NAVY,
+              margin: "0 0 10px", lineHeight: 1.3,
+            }}>
+              {item.q}
+            </h3>
+            <p style={{
+              ...INTER, fontSize: 14, color: TEXT, lineHeight: 1.72, margin: 0,
+            }}>
+              {item.a}
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── DARK CLOSE ───────────────────────────────────────────────────────────────
 type StarDot = { top: string; size: number; opacity: number } & ({ left: string; right?: never } | { right: string; left?: never });
 const STAR_DOTS: StarDot[] = [
@@ -993,7 +1092,7 @@ function DarkClose({ onOpenModal }: { onOpenModal: () => void }) {
         YOUR STORY STARTS HERE
       </p>
       <h2 style={{ ...CAVEAT, fontWeight: 700, fontSize: isMobile ? 46 : 70, color: BG, margin: "0 0 28px", lineHeight: 1.06 }}>
-        Day 1 starts today.
+        Start your habit streak today.
       </h2>
       <div style={{ ...INTER, fontSize: 16, color: "rgba(250,248,243,0.62)", lineHeight: 2.1, marginBottom: 52 }}>
         <p style={{ margin: 0 }}>It takes 5 seconds to sign in.</p>
@@ -1028,8 +1127,7 @@ function DarkClose({ onOpenModal }: { onOpenModal: () => void }) {
           { href: "#home",           label: "Home" },
           { href: "#how-it-works",   label: "How It Works" },
           { href: "#features",       label: "Features" },
-          { href: "#streak-tracking",label: "Streaks" },
-          { href: "#get-started",    label: "Get Started" },
+          { href: "#faq",            label: "FAQ" },
           { href: "/privacy",        label: "Privacy" },
         ].map(link => (
           <a
@@ -1106,6 +1204,7 @@ export default function LandingScreen() {
         <ScreensInFocus />
         <StreakProof />
         <QuoteMoment />
+        <FAQSection />
       </main>
       <DarkClose onOpenModal={openModal} />
     </div>
