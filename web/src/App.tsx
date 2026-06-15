@@ -20,6 +20,8 @@ import ProfileScreen from "@/screens/ProfileScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import JournalScreen from "@/screens/JournalScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
+import BlogListScreen from "@/screens/BlogListScreen";
+import BlogPostScreen from "@/screens/BlogPostScreen";
 
 function AppLayout() {
   const colors = useColors();
@@ -104,7 +106,9 @@ export function App() {
         <ToastProvider>
           <HabitProvider>
             <Routes>
-              <Route path="/privacy" element={<PrivacyScreen />} />
+              <Route path="/privacy"    element={<PrivacyScreen />} />
+              <Route path="/blog"       element={<BlogListScreen />} />
+              <Route path="/blog/:slug" element={<BlogPostScreen />} />
               <Route path="*" element={
                 <AuthGate>
                   <AppLayout />

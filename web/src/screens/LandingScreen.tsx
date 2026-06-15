@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Lock, ShieldCheck, CreditCard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
@@ -383,10 +384,6 @@ const HERO_LINES = [
   { words: ["Free,",   "forever."], offset: 4 },
 ];
 
-const PROOF_AVATARS: [string, string][] = [
-  ["K", NAVY], ["A", GREEN], ["R", GOLD], ["M", "#C4783A"],
-];
-
 function Hero({ onOpenModal }: { onOpenModal: () => void }) {
   const isMobile = useIsMobile();
   const [streakCount, setStreakCount]       = useState(0);
@@ -442,10 +439,6 @@ function Hero({ onOpenModal }: { onOpenModal: () => void }) {
         <rect width="100%" height="100%" filter="url(#grain)" />
       </svg>
 
-      {/* Corner rings */}
-      <div style={{ position: "absolute", top: -80,  left: -80,  width: 240, height: 240, borderRadius: "50%", border: `2px dashed ${NAVY}`, opacity: 0.055, transform: "rotate(15deg)",  pointerEvents: "none" }} aria-hidden="true" />
-      <div style={{ position: "absolute", bottom: -100, right: -100, width: 320, height: 320, borderRadius: "50%", border: `2px dashed ${GOLD}`, opacity: 0.065, transform: "rotate(-20deg)", pointerEvents: "none" }} aria-hidden="true" />
-      <div style={{ position: "absolute", top: "35%",  right: "5.5%", width: 130, height: 130, borderRadius: "50%", border: `1.5px dashed ${GOLD}`, opacity: 0.045, pointerEvents: "none" }} aria-hidden="true" />
 
       {/* Wordmark */}
       <div style={{ padding: isMobile ? "20px 24px" : "28px 56px", position: "relative", zIndex: 1 }}>
@@ -502,34 +495,27 @@ function Hero({ onOpenModal }: { onOpenModal: () => void }) {
           Build streaks, write daily, and see real progress — completely free. No subscription, no app store.
         </p>
 
-        {/* Social proof */}
+        {/* Trust badge */}
         <div style={{
           display: "flex",
-          flexDirection: isMobile ? "column" : "row",
           alignItems: "center",
-          gap: isMobile ? 8 : 10,
+          gap: 16,
           justifyContent: "center",
           margin: "22px 0 0",
           opacity: linesVisible ? 1 : 0,
           transition: "opacity 0.6s ease 700ms",
+          flexWrap: "wrap" as const,
         }}>
-          <div style={{ display: "flex", alignItems: "center" }} aria-hidden="true">
-            {PROOF_AVATARS.map(([letter, color], i) => (
-              <div key={i} style={{
-                width: 28, height: 28, borderRadius: "50%",
-                backgroundColor: color, border: "2.5px solid #FAF8F3",
-                marginLeft: i === 0 ? 0 : -8,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                ...INTER, fontSize: 10, fontWeight: 700, color: "#fff",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-              }}>
-                {letter}
-              </div>
-            ))}
-          </div>
-          <p style={{ ...INTER, fontSize: 13, color: MUTED, textAlign: "center", margin: 0 }}>
-            Join <strong style={{ color: NAVY, fontWeight: 600 }}>1,400+</strong> people building better habits
-          </p>
+          {[
+            { Icon: Lock,         text: "100% private" },
+            { Icon: ShieldCheck,  text: "No ads, ever"  },
+            { Icon: CreditCard,   text: "No credit card" },
+          ].map(({ Icon, text }) => (
+            <div key={text} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <Icon size={13} strokeWidth={2} color={MUTED} aria-hidden="true" />
+              <span style={{ ...INTER, fontSize: 12, color: MUTED, fontWeight: 500 }}>{text}</span>
+            </div>
+          ))}
         </div>
 
         {/* Streak widget card */}
@@ -850,7 +836,7 @@ function ScreensInFocus() {
 }
 
 // ─── STREAK PROOF ─────────────────────────────────────────────────────────────
-const EMPTY_POS = new Set([5, 14, 26]);
+const EMPTY_POS = new Set([14]);
 const DOT_TOTAL = 30;
 
 function StreakProof() {
@@ -1128,6 +1114,7 @@ function DarkClose({ onOpenModal }: { onOpenModal: () => void }) {
           { href: "#how-it-works",   label: "How It Works" },
           { href: "#features",       label: "Features" },
           { href: "#faq",            label: "FAQ" },
+          { href: "/blog",           label: "Blog" },
           { href: "/privacy",        label: "Privacy" },
         ].map(link => (
           <a

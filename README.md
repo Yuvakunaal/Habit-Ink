@@ -26,6 +26,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 - [Features at a Glance](#features-at-a-glance)
 - [Screens](#screens)
   - [Landing Page](#landing-page)
+  - [Blog](#blog)
   - [Today — Daily Tracker](#today--daily-tracker)
   - [Habits](#habits)
   - [Calendar](#calendar)
@@ -69,6 +70,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | ⌨️ | **Keyboard nav** | Full desktop shortcuts on the Today screen |
 | 📡 | **Offline banner** | Fixed top bar appears automatically when network is lost |
 | 🛡️ | **Error boundary** | Full-page and compact per-screen error recovery UI |
+| 📝 | **SEO Blog** | Six long-form articles targeting habit-tracking keywords, with per-post schema, canonical, and OG tags |
 
 ---
 
@@ -78,27 +80,52 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 
 The first thing unauthenticated visitors see — a fully scrollable marketing page with eight distinct sections and a Google sign-in modal.
 
-**Hero** — full-viewport opening with a dot-grid background, an animated three-line headline ("Track habits. / Journal daily. / Free, forever." — each word slides in sequentially with a gold SVG underline drawing on the final line), a live 7-day streak widget animated on load, social proof showing "1,400+ people building better habits", and a primary **"Start your first day"** CTA. A sticky header fades in after scrolling 75% of the viewport and mirrors the CTA.
+**Hero** — full-viewport opening with a dot-grid background and a subtle paper-grain SVG texture. An animated three-line headline ("Track habits. / Journal daily. / Free, forever." — each word slides in sequentially with a gold SVG underline drawing on the final line), a floating 3D ink-pen SVG illustration, a live 7-day streak widget animated on load, and three inline trust signals (Lock icon · "100% private" / ShieldCheck icon · "No ads, ever" / CreditCard icon · "No credit card") sourced from Lucide React. A primary **"Start your first day →"** CTA sits below. A sticky header fades in after scrolling 75% of the viewport and mirrors the CTA.
 
-**How It Works** — eyebrow label + keyword H2 ("Three steps to build better habits.") followed by three numbered steps: sign in with Google (🔑), set intentions and check habits (📝), and keep your streak alive (🔥).
+**How It Works** — eyebrow label + keyword H2 ("Three steps to build better habits.") followed by three numbered steps: sign in with Google (🔑), set intentions and check habits (📝), and keep your streak alive (🔥), connected by a dashed line on desktop.
 
 **Three Truths** — H2 heading "Daily habit tracker. Built-in journal. Real progress." introduces three hover-reveal cards for the app's core pillars (Track · Journal · Progress) with colour-invert animations on hover.
 
-**Screens in Focus** — three alternating scroll-reveal rows, each pairing a headline and description with a pure-CSS mockup of the corresponding app screen (Today's habit table, the calendar heatmap, the progress chart).
+**Screens in Focus** — three alternating scroll-reveal rows, each pairing a headline and description with a pure-CSS mockup of the corresponding app screen (Today's habit table, the June 2026 calendar heatmap, the weekly progress chart).
 
-**Streak Proof** — 30 animated dots fill in one by one (27 green, 3 missed) under the H2 "Build your longest habit streak yet.", demonstrating what a real streak looks like.
+**Streak Proof** — 30 animated dots fill in one by one (29 green, 1 missed) under the H2 "Build your longest habit streak yet." Copy reads: "29 out of 30 days. That's not failure. That's dedication."
 
-**Quote Moment** — a full-width pull-quote with a giant decorative `"` backdrop, attributed to Aristotle: "We are what we repeatedly do. Excellence, then, is not an act, but a habit."
+**Quote Moment** — a full-width pull-quote with a giant decorative `"` backdrop, attributed to Aristotle: "We are what we repeatedly do. Excellence, then, is not an act but a habit."
 
 **FAQ** — six question-and-answer cards in a two-column grid (single column on mobile), scroll-animated. Questions cover pricing, sign-up, combined habit+journal use, streak tracking, device support, and privacy. Content mirrors the FAQPage JSON-LD schema exactly so Google can serve rich results.
 
-**Dark Close** — a high-contrast closing section (`#13183A` background, torn paper clip-path edge) with H2 "Start your habit streak today.", a ghost InkPen3D illustration, and the final gold CTA button.
+**Dark Close** — a high-contrast closing section (`#13183A` background, torn paper clip-path edge) with H2 "Start your habit streak today.", a ghost InkPen3D illustration, and the final gold CTA button. Copy line: "It takes 66 days to build a habit. Habit Ink will be there for every single one."
 
-**Google Sign-In Modal** — clicking any CTA opens a frosted-glass centred modal with a spring entrance animation. The modal displays a diagonal fountain pen illustration at the top, a **"Continue with Google"** button (real 4-colour Google G SVG), three trust checkpoints (Secure · Synced · Private), and closes on Escape or backdrop click.
+**Google Sign-In Modal** — clicking any CTA opens a frosted-glass centred modal with a spring entrance animation. The modal displays a diagonal fountain pen illustration at the top, a **"Continue with Google"** button (real 4-colour Google G SVG), three trust checkpoints (100% private · No ads · Free forever), and closes on Escape or backdrop click.
 
 After completing Google OAuth the user lands directly on the Today screen. On first login, any data previously stored in browser localStorage is silently migrated to Supabase.
 
-The footer includes a navigation bar: Home · How It Works · Features · FAQ · Privacy.
+The footer navigation includes: Home · How It Works · Features · FAQ · Blog · Privacy.
+
+---
+
+### Blog
+
+A fully public, SEO-optimised blog at `/blog` and `/blog/:slug` — no sign-in required. Built without any external markdown library; content is stored as TypeScript files and rendered by a zero-dependency `MarkdownRenderer` component.
+
+**Blog List (`/blog`)** — sticky branded header (wordmark + "Start Free →" CTA), a hero section ("The Habit Ink Journal"), category filter pills (All / Habit Science / Challenges / Journaling / Morning Routines / Reviews), a featured post card (navy background, gold accents), and a post grid below. A closing navy CTA section invites readers to start tracking. Injects a `Blog` JSON-LD schema and updates the canonical URL on mount.
+
+**Blog Post (`/blog/:slug`)** — breadcrumb (`Home › Blog › [Title]`), article header (category pill, H1, author, date, reading time), full article body rendered by `MarkdownRenderer` (supports h2/h3, bold, italic `_text_`, links, blockquotes with gold left border, unordered and ordered lists, horizontal rules), a mid-article CTA block ("Put this into practice with Habit Ink"), tag pills, a "Continue reading" section with up to 3 related posts, and a "← All articles" footer link.
+
+On mount each post injects: updated `<title>`, `<meta name="description">`, canonical URL, `og:title`, `og:description`, `og:url`, `twitter:title`, `twitter:description`, a `BlogPosting` JSON-LD schema, and a `BreadcrumbList` JSON-LD schema. All are restored on unmount.
+
+**Six published articles:**
+
+| Slug | Target Keyword | Est. Volume |
+|---|---|---|
+| `how-to-build-a-habit` | "how to build a habit" | 40,500 / mo |
+| `66-day-habit-challenge` | "66 day habit challenge" | 2,200 / mo |
+| `habit-journal-vs-tracker` | "habit journal app" | 2,400 / mo |
+| `habit-streak-psychology` | "streak habit tracker" | 1,900 / mo |
+| `morning-routine-habits` | "morning routine tracker" | 3,100 / mo |
+| `free-habit-tracker-2026` | "free habit tracker" | 18,000 / mo |
+
+All articles are 800–1,200 words, cite real behavioural research, and naturally include target keywords without stuffing.
 
 ---
 
@@ -203,6 +230,30 @@ Your current day number sits quietly below your name as a progress marker.
 
 ---
 
+### Settings
+
+Where the app becomes yours.
+
+**Theme** · **Font Style** · **Text Size** · **Daily Quote** · **Account** · **Reset**
+
+Five themes, two fonts, three text sizes, and the option to pin your own quote to the Today screen. Every change is instant, global, and synced to the cloud.
+
+The **Account** section shows your Google profile photo, full name, and email address. Clicking **Sign Out** opens a themed confirmation dialog (bottom sheet on mobile, centered modal on desktop) showing your account details before logging you out cleanly.
+
+**Reset to Defaults** uses an **inline confirmation panel** that expands in place — no overlay, no browser dialog. It clearly states that only appearance settings (theme, font, quote) will be reset; your habit data and journal entries are untouched. Pressing nothing for 4 seconds auto-cancels the confirmation.
+
+---
+
+### Privacy Policy
+
+A brand-styled public page at `/privacy` — accessible without signing in, linked from the landing page footer.
+
+Nine sections cover exactly what is collected (Google profile basics + in-app content you write), how it is stored (Supabase Postgres with Row Level Security), third-party services (Google OAuth and Supabase only — no advertising trackers, no analytics), user rights (view, export, delete), cookies (session storage only), and contact details for data requests.
+
+The page uses the same navy / gold / cream palette and Caveat headings as the rest of the app. A sticky header with a back-to-home link and a footer nav (Home · Blog · How It Works · Features) keep it connected to the site. Four summary cards at the top (100% Private · No Ads Ever · Free Forever · You're in Control) give returning users a quick-scan overview without reading the full policy.
+
+---
+
 ### 404 — Not Found
 
 A full-page, theme-aware error screen shown to authenticated users who navigate to any URL that doesn't match a known route.
@@ -215,30 +266,6 @@ Design: large `404` in the heading font and primary colour; a habit-row mockup s
 - **Not logged in + unknown URL** → `AuthGate` immediately redirects to `/` (landing page). The 404 screen is never shown.
 - **Logged in + unknown URL** → `AuthGate` intercepts before `AppLayout` mounts and renders `NotFoundScreen` directly as a full-page view.
 - **Logged in + known URL** → normal app routing.
-
----
-
-### Privacy Policy
-
-A brand-styled public page at `/privacy` — accessible without signing in, linked from the landing page footer.
-
-Nine sections cover exactly what is collected (Google profile basics + in-app content you write), how it is stored (Supabase Postgres with Row Level Security), third-party services (Google OAuth and Supabase only — no advertising trackers, no analytics), user rights (view, export, delete), cookies (session storage only), and contact details for data requests.
-
-The page uses the same navy / gold / cream palette and Caveat headings as the rest of the app. A sticky header with a back-to-home link and a footer nav keep it connected to the landing page. Four summary cards at the top (100% Private · No Ads Ever · Free Forever · You're in Control) give returning users a quick-scan overview without reading the full policy.
-
----
-
-### Settings
-
-Where the app becomes yours.
-
-**Theme** · **Font Style** · **Text Size** · **Daily Quote** · **Account** · **Reset**
-
-Five themes, two fonts, three text sizes, and the option to pin your own quote to the Today screen. Every change is instant, global, and synced to the cloud.
-
-The **Account** section shows your Google profile photo, full name, and email address. Clicking **Sign Out** opens a themed confirmation dialog (bottom sheet on mobile, centered modal on desktop) showing your account details before logging you out cleanly.
-
-**Reset to Defaults** uses an **inline confirmation panel** that expands in place — no overlay, no browser dialog. It clearly states that only appearance settings (theme, font, quote) will be reset; your habit data and journal entries are untouched. Pressing nothing for 4 seconds auto-cancels the confirmation.
 
 ---
 
@@ -329,20 +356,21 @@ Habit Ink is fully optimised for search engines and installable as a Progressive
 
 | Signal | Implementation |
 |---|---|
-| Title & meta description | Keyword-rich, ≤ 60 / 160 characters, unique per page |
-| Canonical URL | `<link rel="canonical">` on every page |
+| Title & meta description | Keyword-rich, ≤ 60 / 155 characters, unique per page; blog posts update `<title>` and `<meta name="description">` dynamically on mount |
+| Canonical URL | `<link rel="canonical">` updated per page — `/privacy`, `/blog`, and each `/blog/:slug` update and restore the canonical on mount/unmount |
 | Robots directive | `index, follow, max-image-preview:large, max-snippet:-1` |
-| Sitemap | `/sitemap.xml` — lists `/` (monthly) and `/privacy` (yearly) |
-| robots.txt | Allows `/`, disallows all authenticated app routes |
-| Open Graph | Full `og:title`, `og:description`, `og:image` (1200×630 branded PNG), `og:type`, `og:locale` |
-| Twitter / X Card | `summary_large_image` card with matching image and alt text |
-| JSON-LD structured data | `@graph` with four schemas: `WebSite` (with `SearchAction` / sitelinks search box), `SoftwareApplication` (`featureList`, `offers`, `operatingSystem: "Web Browser"`), `Organization` (with `sameAs` GitHub link), and `FAQPage` (six Q&As matching the visible FAQ section exactly) |
-| BreadcrumbList schema | Injected dynamically on `/privacy` via `useEffect` — restores on unmount |
-| Dynamic canonical | `/privacy` page updates `<link rel="canonical">` to its own URL on mount and restores it on unmount |
+| Sitemap | `/sitemap.xml` — lists `/` (monthly, priority 1.0), `/blog` (weekly, priority 0.9), all 6 blog post URLs (monthly, priority 0.8), and `/privacy` (yearly, priority 0.3) |
+| robots.txt | Allows `/`, `/blog`, `/blog/`; disallows all authenticated app routes |
+| Open Graph | Full `og:title`, `og:description`, `og:image` (1200×630 branded PNG), `og:url`, `og:type`, `og:locale`; blog posts update og:title, og:description, and og:url dynamically |
+| Twitter / X Card | `summary_large_image` card; blog posts update `twitter:title` and `twitter:description` dynamically |
+| JSON-LD structured data — homepage | `@graph` with four schemas: `WebSite` (with `SearchAction` / sitelinks search box), `SoftwareApplication` (`featureList`, `offers`, `operatingSystem: "Web Browser"`), `Organization` (with `sameAs` GitHub link), and `FAQPage` (six Q&As matching the visible FAQ section exactly) |
+| JSON-LD structured data — `/privacy` | `BreadcrumbList` (Home › Privacy Policy) injected dynamically, removed on unmount |
+| JSON-LD structured data — `/blog` | `Blog` schema injected dynamically, removed on unmount |
+| JSON-LD structured data — `/blog/:slug` | `BlogPosting` schema (headline, description, datePublished, author, publisher, keywords, articleSection) + `BreadcrumbList` (Home › Blog › [Title]) injected dynamically, removed on unmount |
 | Heading hierarchy | H1 → H2 → H3 with no gaps; section eyebrows are `<p>` elements — each section has a keyword-rich `<h2>` below |
-| Semantic HTML | `<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`, `<article>` landmarks throughout |
-| ARIA | `aria-label`, `aria-hidden`, `role="dialog"`, `role="img"` on all interactive and decorative elements |
-| Internal linking | Footer nav: Home · How It Works · Features · FAQ · Privacy; Privacy page links back to home |
+| Semantic HTML | `<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`, `<article>` landmarks throughout; blog posts use `<article>` and `<ol>` breadcrumb list |
+| ARIA | `aria-label`, `aria-hidden`, `role="dialog"`, `role="img"`, `aria-current="page"` on breadcrumb throughout |
+| Internal linking | Landing page footer: Home · How It Works · Features · FAQ · Blog · Privacy; Privacy and Blog pages link back to home; blog posts link to related posts and back to blog list |
 | Referrer policy | `strict-origin-when-cross-origin` |
 | Color scheme | `<meta name="color-scheme" content="light">` |
 
@@ -379,7 +407,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **Four contexts power the whole app:**
 
-**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` sits inside the outer `<Routes>` and handles four states: (1) auth loading → `AppSkeleton`; (2) no session at `/` → `LandingScreen`; (3) no session at any other path → `<Navigate to="/" replace />`; (4) session present but data not yet loaded → `AppSkeleton`; (5) session present + unknown route → `NotFoundScreen` rendered full-page without sidebar; (6) session present + known route → renders children (`AppLayout`).
+**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` sits inside the outer `<Routes>` and handles six states: (1) auth loading → `AppSkeleton`; (2) no session at `/` → `LandingScreen`; (3) no session at any other path → `<Navigate to="/" replace />`; (4) session present but data not yet loaded → `AppSkeleton`; (5) session present + unknown route → `NotFoundScreen` rendered full-page without sidebar; (6) session present + known route → renders children (`AppLayout`). A `KNOWN_ROUTES` set (`/`, `/habits`, `/calendar`, `/progress`, `/journal`, `/profile`, `/settings`) drives case 5.
 
 **`HabitContext`** — core data layer. All habits, all entries, all journal records. On login: runs the optional one-time localStorage migration, then fetches all four tables in parallel. Mutations are optimistic — state updates instantly and a background Supabase write follows. Journal saves are debounced per date (800 ms) to batch rapid keystrokes into a single write. Supabase Realtime subscriptions on all three tables keep every open tab in sync. Exposes streak calculations, completion rates, date-aware schedule checks, and journal helpers.
 
@@ -387,7 +415,9 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **`ToastContext`** — non-blocking notification layer. Self-dismissing toasts used for milestone alerts, setting confirmations, undo-delete feedback, and error reporting. Supports an optional `duration` override — the undo delete toast uses 5 000 ms; standard toasts auto-dismiss at 3 800 ms.
 
-**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) splits public from authenticated routes: `/privacy` renders `PrivacyScreen` directly without touching `AuthGate`; all other paths fall through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
+**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) registers three fully public routes before the wildcard: `/privacy` → `PrivacyScreen`, `/blog` → `BlogListScreen`, `/blog/:slug` → `BlogPostScreen`. All three render outside `AuthGate` and the app-level providers — no auth check, no Supabase queries. The wildcard `*` falls through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
+
+**Blog content system** — six blog posts are stored as TypeScript files under `src/blog/posts/`. Each exports a `BlogPost` object (slug, title, description, date, readingTime, category, tags, excerpt, author, content, keywords). `src/blog/index.ts` exports `ALL_POSTS` (sorted newest-first), `getPostBySlug()`, `getRelatedPosts()`, and `ALL_CATEGORIES`. Content is written in a lightweight markdown dialect and rendered by `MarkdownRenderer` — a zero-dependency component that handles h1/h2/h3, `**bold**`, `_italic_`, `[link](url)`, `> blockquote`, unordered lists, ordered lists, and `---` horizontal rules entirely in React without `dangerouslySetInnerHTML`.
 
 **Notable internals:**
 - The 15-week heatmap uses a `ResizeObserver` with `useLayoutEffect` to compute cell size before the first paint — no layout flash.
@@ -410,7 +440,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 | [TypeScript](https://www.typescriptlang.org) | 5.9 | Type safety |
 | [React Router DOM](https://reactrouter.com) | 6 | Client-side routing |
 | [Supabase](https://supabase.com) | 2.108 | Google OAuth auth, Postgres database, Realtime subscriptions, Row Level Security |
-| [Lucide React](https://lucide.dev) | 0.525 | Icon library |
+| [Lucide React](https://lucide.dev) | 0.525 | Icon library (used in landing page trust signals and app UI) |
 | [Caveat](https://fonts.google.com/specimen/Caveat) | — | Handwritten display font (Google Fonts) |
 | [Inter](https://rsms.me/inter/) | — | Clean body font (Google Fonts) |
 
@@ -426,15 +456,24 @@ Journal-Tracker/
 └── web/                          Vite + React application
     ├── public/
     │   ├── favicon.png            App icon (192×192, used for tab + PWA)
-    │   ├── favicon.svg            SVG icon (present, not linked in index.html)
     │   ├── logo.png               Full logo (512×512, used in PWA manifest)
     │   ├── logo-no-bg.png         Transparent logo (used in README header)
     │   ├── og-image.png           OG / Twitter card image (1200×630 branded PNG)
-    │   ├── robots.txt             Allows /; disallows all authenticated routes
-    │   ├── sitemap.xml            XML sitemap with / and /privacy entries
+    │   ├── robots.txt             Allows / and /blog; disallows all authenticated routes
+    │   ├── sitemap.xml            XML sitemap: /, /blog, 6 blog posts, /privacy
     │   └── manifest.json          PWA web app manifest
     └── src/
         ├── __tests__/             Unit and integration test files
+        ├── blog/
+        │   ├── types.ts              BlogPost interface
+        │   ├── index.ts              ALL_POSTS array · getPostBySlug · getRelatedPosts · ALL_CATEGORIES
+        │   └── posts/
+        │       ├── how-to-build-a-habit.ts
+        │       ├── 66-day-habit-challenge.ts
+        │       ├── habit-journal-vs-tracker.ts
+        │       ├── habit-streak-psychology.ts
+        │       ├── morning-routine-habits.ts
+        │       └── free-habit-tracker-2026.ts
         ├── components/
         │   ├── AppSkeleton.tsx       Loading spinner shown while DB data loads
         │   ├── AuthGate.tsx          Auth + route guard: redirects unknown paths, renders NotFoundScreen for logged-in 404s
@@ -442,6 +481,7 @@ Journal-Tracker/
         │   ├── ConfirmDialog.tsx     Reusable themed confirmation modal
         │   ├── Confetti.tsx          Canvas confetti animation
         │   ├── ErrorBoundary.tsx     React error boundary — full-page or compact (per-screen)
+        │   ├── MarkdownRenderer.tsx  Zero-dependency markdown → React renderer (no dangerouslySetInnerHTML)
         │   ├── Modal.tsx             Dialog (desktop) / bottom sheet (mobile)
         │   ├── MonthHeatmap.tsx      15-week activity heatmap
         │   ├── OfflineBanner.tsx     Fixed top banner shown when navigator.onLine is false
@@ -470,6 +510,8 @@ Journal-Tracker/
         │       └── types.ts           TypeScript types matching the DB schema
         ├── screens/
         │   ├── LandingScreen.tsx      Public landing page (8 sections + Google sign-in modal)
+        │   ├── BlogListScreen.tsx     Public blog index (/blog) — featured post + category filter + post grid
+        │   ├── BlogPostScreen.tsx     Public blog article (/blog/:slug) — full post with dynamic SEO meta
         │   ├── PrivacyScreen.tsx      Public privacy policy page (accessible without auth)
         │   ├── NotFoundScreen.tsx     Full-page themed 404 (shown to logged-in users on unknown routes)
         │   ├── LoginScreen.tsx        Legacy minimal login page (still present, not shown to users)
@@ -480,7 +522,7 @@ Journal-Tracker/
         │   ├── JournalScreen.tsx      Timeline journal
         │   ├── ProfileScreen.tsx      User profile
         │   └── SettingsScreen.tsx     App settings
-        ├── App.tsx                    Root layout + routing + provider order
+        ├── App.tsx                    Root layout + routing (3 public routes + AuthGate wildcard)
         ├── main.tsx                   Entry point
         └── vite-env.d.ts              Vite environment type declarations
     └── vercel.json                Vercel deployment config — SPA rewrite rule + build settings

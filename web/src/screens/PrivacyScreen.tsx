@@ -396,9 +396,9 @@ export default function PrivacyScreen() {
         <nav aria-label="Footer links" style={{ display: "flex", gap: 20, justifyContent: "center", marginBottom: 8, flexWrap: "wrap" as const }}>
           {[
             { href: "/",              label: "Home" },
+            { href: "/blog",          label: "Blog" },
             { href: "/#how-it-works", label: "How It Works" },
             { href: "/#features",     label: "Features" },
-            { href: "/#get-started",  label: "Get Started" },
           ].map(link => (
             <a key={link.href} href={link.href} style={{ ...INTER, fontSize: 12, color: MUTED, textDecoration: "none" }}>
               {link.label}
