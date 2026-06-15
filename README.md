@@ -11,7 +11,7 @@
     <img src="https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 6" />
     <img src="https://img.shields.io/badge/Supabase-2-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" />
     <img src="https://img.shields.io/badge/React_Router-6-CA4245?style=flat-square&logo=react-router&logoColor=white" alt="React Router" />
-    <img src="https://img.shields.io/badge/version-2.0-8b5cf6?style=flat-square" alt="Version 2.0" />
+    <img src="https://img.shields.io/badge/version-3.0-8b5cf6?style=flat-square" alt="Version 3.0" />
   </p>
 </div>
 
@@ -25,7 +25,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 
 - [Features at a Glance](#features-at-a-glance)
 - [Screens](#screens)
-  - [Login](#login)
+  - [Landing Page](#landing-page)
   - [Today — Daily Tracker](#today--daily-tracker)
   - [Habits](#habits)
   - [Calendar](#calendar)
@@ -48,7 +48,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 
 | | Feature | Detail |
 |---|---|---|
-| 🔐 | **Google Sign-In** | One-tap OAuth via Supabase — session persists across tabs and reloads |
+| 🔐 | **Google Sign-In** | One-tap OAuth via Supabase from the landing page — session persists across tabs and reloads |
 | ☁️ | **Cloud sync** | All habits, journals, and settings saved to Supabase — accessible on any device |
 | 🔄 | **Realtime** | Cross-tab sync via Supabase Realtime — open two windows, changes appear in both |
 | ↩ | **Undo delete** | Deleting a habit shows a 5-second undo toast — nothing is permanently gone until the window closes |
@@ -64,18 +64,34 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | 🎨 | **5 themes** | Swap palettes instantly — no reload |
 | 🖋️ | **2 font styles** | Handwritten (Caveat) or Clean (Inter) |
 | ⌨️ | **Keyboard nav** | Full desktop shortcuts on the Today screen |
+| 📡 | **Offline banner** | Fixed top bar appears automatically when network is lost |
+| 🛡️ | **Error boundary** | Full-page and compact per-screen error recovery UI |
 
 ---
 
 ## Screens
 
-### Login
+### Landing Page
 
-The first screen you see before signing in.
+The first thing unauthenticated visitors see — a fully scrollable marketing page with seven distinct sections and a Google sign-in modal.
 
-A centred layout with the Habit Ink logo, title, and a single **"Continue with Google"** button. Clicking it launches a Google OAuth flow via Supabase. After completing the flow in the browser you are redirected back to the app, signed in, and brought straight to Today's screen. The session is persisted — no re-login on refresh or next visit.
+**Hero** — full-viewport opening with a dot-grid background, an animated headline ("Your habits. Your journal. One beautiful place."), a live streak widget (30 glowing dots, animated on load), social proof showing "1,400+ people building better habits", and a primary **"Start your first day"** CTA. A sticky header fades in after scrolling 75% of the viewport and mirrors the CTA.
 
-On first login, any data previously stored in browser localStorage is silently migrated to Supabase and the local keys are cleared — so existing users keep all their history.
+**How It Works** — three numbered steps walking new users through the core flow: sign in with Google (🔑), set daily intentions and check habits (📝), and keep your streak alive (🔥).
+
+**Three Truths** — three hover-reveal cards for the app's three core pillars (Track · Journal · Progress) with subtle flip animations.
+
+**Screens in Focus** — three alternating scroll-reveal rows, each pairing a section title and description with a pure-CSS mockup of the corresponding app screen (Today's habit table, the calendar heatmap, the progress chart).
+
+**Streak Proof** — a 30-dot animated streak visualisation with a motivational subheading, demonstrating what a real streak looks like inside the app.
+
+**Quote Moment** — a full-width pull-quote with a giant decorative `"` backdrop, attributed to Aristotle: "We are what we repeatedly do. Excellence, then, is not an act, but a habit."
+
+**Dark Close** — a high-contrast closing section (`#13183A` background, torn paper clip-path edge) with the main headline repeated, a ghost InkPen3D illustration, and the final CTA.
+
+**Google Sign-In Modal** — clicking any CTA opens a frosted-glass centred modal with a spring entrance animation. The modal displays a diagonal fountain pen illustration at the top, a **"Continue with Google"** button (real 4-colour Google G SVG), three trust checkpoints (Secure · Synced · Private), and closes on Escape or backdrop click.
+
+After completing Google OAuth the user lands directly on the Today screen. On first login, any data previously stored in browser localStorage is silently migrated to Supabase.
 
 ---
 
@@ -234,7 +250,7 @@ Habit Ink uses **Supabase Auth** with the Google OAuth provider.
 - The session is stored automatically by Supabase and survives page reloads
 - User metadata from Google (profile photo, full name, email) is displayed in the sidebar user card and in Settings → Account
 - The sidebar shows the Google profile photo with a small Google `G` badge, the display name, and the account email
-- Signing out clears the session, returns to the Login screen, and resets all in-memory state
+- Signing out clears the session, returns to the Landing Page, and resets all in-memory state
 
 **First-login migration** — if the browser has legacy localStorage data from before the Supabase backend was added, it is silently migrated to the database on first sign-in and the local keys are cleared. Migration is safe: if the database already has data for the user, the local keys are simply cleared and no overwrite happens.
 
@@ -294,7 +310,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **Four contexts power the whole app:**
 
-**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` wraps the entire app and renders the login screen when there is no active session, and an `AppSkeleton` loading spinner while settings and habit data are being fetched from the database.
+**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` wraps the entire app and renders `LandingScreen` when there is no active session, and an `AppSkeleton` loading spinner while settings and habit data are being fetched from the database.
 
 **`HabitContext`** — core data layer. All habits, all entries, all journal records. On login: runs the optional one-time localStorage migration, then fetches all four tables in parallel. Mutations are optimistic — state updates instantly and a background Supabase write follows. Journal saves are debounced per date (800 ms) to batch rapid keystrokes into a single write. Supabase Realtime subscriptions on all three tables keep every open tab in sync. Exposes streak calculations, completion rates, date-aware schedule checks, and journal helpers.
 
@@ -342,16 +358,20 @@ Journal-Tracker/
     ├── public/
     │   ├── favicon.png
     │   ├── favicon.svg
-    │   └── logo.png
+    │   ├── logo.png
+    │   └── manifest.json          PWA web app manifest
     └── src/
+        ├── __tests__/             Unit and integration test files
         ├── components/
         │   ├── AppSkeleton.tsx       Loading spinner shown while DB data loads
-        │   ├── AuthGate.tsx          Blocks render until auth + data are ready
+        │   ├── AuthGate.tsx          Renders LandingScreen (no session) or AppSkeleton (loading)
         │   ├── CompletionRing.tsx    Circular SVG progress indicator
         │   ├── ConfirmDialog.tsx     Reusable themed confirmation modal
         │   ├── Confetti.tsx          Canvas confetti animation
+        │   ├── ErrorBoundary.tsx     React error boundary — full-page or compact (per-screen)
         │   ├── Modal.tsx             Dialog (desktop) / bottom sheet (mobile)
         │   ├── MonthHeatmap.tsx      15-week activity heatmap
+        │   ├── OfflineBanner.tsx     Fixed top banner shown when navigator.onLine is false
         │   ├── TabBar.tsx            Mobile bottom nav + collapsible sidebar
         │   └── WeeklyChart.tsx       7-day completion bar chart
         ├── constants/
@@ -367,6 +387,8 @@ Journal-Tracker/
         │   └── useIsDesktop.ts        Responsive breakpoint hooks (768 / 1024 px)
         ├── lib/
         │   ├── debounce.ts            Generic typed debounce utility
+        │   ├── env.ts                 Validates required env vars at startup; exports typed env object
+        │   ├── logger.ts              Centralised logError / logWarn (swappable for Sentry)
         │   ├── supabase.ts            Typed Supabase client singleton
         │   ├── auth/
         │   │   └── migration.ts       One-time localStorage → Supabase migration
@@ -374,7 +396,8 @@ Journal-Tracker/
         │       ├── mappers.ts         camelCase ↔ snake_case row converters
         │       └── types.ts           TypeScript types matching the DB schema
         ├── screens/
-        │   ├── LoginScreen.tsx        Google OAuth login page
+        │   ├── LandingScreen.tsx      Public landing page (7 sections + Google sign-in modal)
+        │   ├── LoginScreen.tsx        Legacy minimal login page (still present, not shown to users)
         │   ├── TodayScreen.tsx        Daily tracker + journal
         │   ├── HabitsScreen.tsx       Habit management
         │   ├── CalendarScreen.tsx     Monthly calendar
@@ -391,9 +414,9 @@ Journal-Tracker/
 
 <div align="center">
   <p>
-    Built with care &nbsp;·&nbsp; Habit Ink
+    © 2026 Habit Ink &nbsp;·&nbsp; Made by Kunaal
   </p>
   <p>
-    <sub>Habit Ink — v2.0</sub>
+    <sub>Habit Ink — v3.0</sub>
   </p>
 </div>

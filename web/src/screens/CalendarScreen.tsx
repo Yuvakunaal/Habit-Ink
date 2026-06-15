@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { isScheduledForDate, toDateKey, useHabits } from "@/context/HabitContext";
@@ -34,6 +34,85 @@ function AnimatedBar({ pct, barColor }: { pct: number; barColor: string }) {
   );
 }
 
+interface CalendarGridProps {
+  year: number;
+  month: number;
+  firstDow: number;
+  daysInMonth: number;
+  todayKey: string;
+  selected: string | null;
+  showDots?: boolean;
+  getCompletionForDate: (dk: string) => { done: number; total: number };
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  font: ReturnType<typeof import("@/hooks/useFont").useFont>;
+  onSelect: (dk: string) => void;
+}
+
+const CalendarGrid = React.memo(function CalendarGrid({
+  year, month, firstDow, daysInMonth, todayKey, selected,
+  showDots, getCompletionForDate, colors, font, onSelect,
+}: CalendarGridProps) {
+  const cells = useMemo(() => {
+    return Array.from({ length: daysInMonth }).map((_, i) => {
+      const day = i + 1;
+      const dk = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const isFuture = dk > todayKey;
+      const { done, total } = isFuture ? { done: 0, total: 0 } : getCompletionForDate(dk);
+      const dotColor = !isFuture && total > 0
+        ? (done === total ? colors.success : done > 0 ? colors.secondary : colors.accent)
+        : null;
+      const bgTint = !isFuture
+        ? (total === 0 ? "none" : done === total ? colors.success + "22" : done > 0 ? colors.secondary + "22" : colors.accent + "15")
+        : "none";
+      return { day, dk, isFuture, dotColor, bgTint };
+    });
+  }, [year, month, daysInMonth, todayKey, getCompletionForDate, colors]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", marginBottom: showDots ? 12 : 16 }}>
+      {Array.from({ length: firstDow }).map((_, i) => (
+        <div key={`empty-${i}`} style={{ width: `${100 / 7}%`, aspectRatio: 1 }} />
+      ))}
+      {cells.map(({ day, dk, isFuture, dotColor, bgTint }) => {
+        const isToday = dk === todayKey;
+        const isSelected = dk === selected;
+        return (
+          <button
+            key={dk}
+            onClick={() => onSelect(dk)}
+            aria-label={`${day} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month]} ${year}`}
+            aria-pressed={isSelected}
+            style={{
+              width: `${100 / 7}%`,
+              aspectRatio: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: isSelected ? colors.primary : showDots ? "none" : bgTint,
+              border: isToday && !isSelected ? `1.5px solid ${colors.primary}` : "none",
+              borderRadius: showDots ? 20 : 18,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            <span style={{
+              ...font.body,
+              fontSize: font.size(showDots ? 17 : 14),
+              color: isSelected ? colors.primaryForeground : isFuture ? colors.mutedForeground : colors.foreground,
+            }}>
+              {day}
+            </span>
+            {showDots && dotColor && !isSelected && (
+              <div style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: dotColor, marginTop: 2 }} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+});
+
 export default function CalendarScreen() {
   const colors = useColors();
   const font = useFont();
@@ -61,13 +140,10 @@ export default function CalendarScreen() {
     else setMonth(m => m + 1);
     setSelected(null);
   };
-
-  const getDotColor = (dateKey: string): string | null => {
-    const { done, total } = getCompletionForDate(dateKey);
-    if (total === 0) return null;
-    if (done === total) return colors.success;
-    if (done > 0) return colors.secondary;
-    return colors.accent;
+  const jumpToToday = () => {
+    setYear(today.getFullYear());
+    setMonth(today.getMonth());
+    setSelected(toDateKey(today));
   };
 
   const selectedHabits = selected ? getHabitsForDate(selected) : [];
@@ -107,9 +183,27 @@ export default function CalendarScreen() {
               <button onClick={prevMonth} style={{ padding: 8, background: "none", border: "none", cursor: "pointer" }}>
                 <ChevronLeft size={20} color={colors.foreground} />
               </button>
-              <span style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground }}>
-                {MONTHS[month]} {year}
-              </span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                <span style={{ ...font.heading, fontSize: font.size(18), color: colors.foreground }}>
+                  {MONTHS[month]} {year}
+                </span>
+                {!atCurrentMonth && (
+                  <button
+                    onClick={jumpToToday}
+                    style={{
+                      ...font.body, fontSize: font.size(11),
+                      color: colors.primary,
+                      backgroundColor: colors.primary + "12",
+                      border: `1px solid ${colors.primary}28`,
+                      borderRadius: 20, paddingLeft: 10, paddingRight: 10,
+                      paddingTop: 3, paddingBottom: 3,
+                      cursor: "pointer", lineHeight: 1.5,
+                    }}
+                  >
+                    ← Today
+                  </button>
+                )}
+              </div>
               <button onClick={nextMonth} disabled={atCurrentMonth} style={{ padding: 8, background: "none", border: "none", cursor: atCurrentMonth ? "default" : "pointer", opacity: atCurrentMonth ? 0.25 : 1 }}>
                 <ChevronRight size={20} color={colors.foreground} />
               </button>
@@ -123,48 +217,13 @@ export default function CalendarScreen() {
             </div>
 
             {/* Calendar grid */}
-            <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", marginBottom: 16 }}>
-              {Array.from({ length: firstDow }).map((_, i) => (
-                <div key={`empty-${i}`} style={{ width: `${100/7}%`, aspectRatio: 1 }} />
-              ))}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const dk = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const isToday = dk === todayKey;
-                const isSelected = dk === selected;
-                const isFuture = dk > todayKey;
-                const bgTint = !isFuture && !isSelected ? (() => {
-                  const { done, total } = getCompletionForDate(dk);
-                  if (total === 0) return "none";
-                  if (done === total) return colors.success + "22";
-                  if (done > 0) return colors.secondary + "22";
-                  return colors.accent + "15";
-                })() : "none";
-                return (
-                  <button
-                    key={dk}
-                    onClick={() => setSelected(dk === selected ? null : dk)}
-                    style={{
-                      width: `${100/7}%`,
-                      aspectRatio: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: isSelected ? colors.primary : bgTint,
-                      border: isToday && !isSelected ? `1.5px solid ${colors.primary}` : "none",
-                      borderRadius: 18,
-                      cursor: "pointer",
-                      padding: 0,
-                    }}
-                  >
-                    <span style={{ ...font.body, fontSize: font.size(14), color: isSelected ? colors.primaryForeground : isFuture ? colors.mutedForeground : colors.foreground }}>
-                      {day}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <CalendarGrid
+              year={year} month={month} firstDow={firstDow} daysInMonth={daysInMonth}
+              todayKey={todayKey} selected={selected}
+              getCompletionForDate={getCompletionForDate}
+              colors={colors} font={font}
+              onSelect={(dk) => setSelected(dk === selected ? null : dk)}
+            />
 
             {/* Legend — use tinted rectangles to match the calendar cells */}
             <div style={{ display: "flex", flexDirection: "row", justifyContent: "center", gap: 14 }}>
@@ -304,9 +363,27 @@ export default function CalendarScreen() {
           <button onClick={prevMonth} style={{ padding: 8, background: "none", border: "none", cursor: "pointer" }}>
             <ChevronLeft size={22} color={colors.foreground} />
           </button>
-          <span style={{ ...font.heading, fontSize: font.size(22), color: colors.foreground }}>
-            {MONTHS[month]} {year}
-          </span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+            <span style={{ ...font.heading, fontSize: font.size(22), color: colors.foreground }}>
+              {MONTHS[month]} {year}
+            </span>
+            {!atCurrentMonth && (
+              <button
+                onClick={jumpToToday}
+                style={{
+                  ...font.body, fontSize: font.size(12),
+                  color: colors.primary,
+                  backgroundColor: colors.primary + "12",
+                  border: `1px solid ${colors.primary}28`,
+                  borderRadius: 20, paddingLeft: 12, paddingRight: 12,
+                  paddingTop: 4, paddingBottom: 4,
+                  cursor: "pointer", lineHeight: 1.5,
+                }}
+              >
+                ← Today
+              </button>
+            )}
+          </div>
           <button onClick={nextMonth} disabled={atCurrentMonth} style={{ padding: 8, background: "none", border: "none", cursor: atCurrentMonth ? "default" : "pointer", opacity: atCurrentMonth ? 0.25 : 1 }}>
             <ChevronRight size={22} color={colors.foreground} />
           </button>
@@ -320,46 +397,13 @@ export default function CalendarScreen() {
         </div>
 
         {/* Calendar grid */}
-        <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", marginBottom: 12 }}>
-          {Array.from({ length: firstDow }).map((_, i) => (
-            <div key={`empty-${i}`} style={{ width: `${100/7}%`, aspectRatio: 1 }} />
-          ))}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const day = i + 1;
-            const dk = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-            const isToday = dk === todayKey;
-            const isSelected = dk === selected;
-            const isFuture = dk > todayKey;
-            const dot = isFuture ? null : getDotColor(dk);
-
-            return (
-              <button
-                key={dk}
-                onClick={() => setSelected(dk === selected ? null : dk)}
-                style={{
-                  width: `${100/7}%`,
-                  aspectRatio: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: isSelected ? colors.primary : "none",
-                  border: isToday && !isSelected ? `1.5px solid ${colors.primary}` : "none",
-                  borderRadius: 20,
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              >
-                <span style={{ ...font.body, fontSize: font.size(17), color: isSelected ? colors.primaryForeground : isFuture ? colors.mutedForeground : colors.foreground }}>
-                  {day}
-                </span>
-                {dot && !isSelected ? (
-                  <div style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: dot, marginTop: 2 }} />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+        <CalendarGrid
+          year={year} month={month} firstDow={firstDow} daysInMonth={daysInMonth}
+          todayKey={todayKey} selected={selected} showDots
+          getCompletionForDate={getCompletionForDate}
+          colors={colors} font={font}
+          onSelect={(dk) => setSelected(dk === selected ? null : dk)}
+        />
 
         {/* Legend — same tinted rectangles as desktop */}
         <div style={{ display: "flex", flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 12 }}>

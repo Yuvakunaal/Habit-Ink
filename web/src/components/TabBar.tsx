@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   BookOpen,
@@ -17,18 +17,8 @@ import { useSettings } from "@/context/SettingsContext";
 import { toDateKey, useHabits } from "@/context/HabitContext";
 import { useAuth } from "@/context/AuthContext";
 
-// Desktop sidebar nav (includes Journal)
-const SIDEBAR_TABS = [
-  { path: "/", label: "Today", Icon: BookOpen },
-  { path: "/habits", label: "Habits", Icon: CheckSquare2 },
-  { path: "/calendar", label: "Calendar", Icon: Calendar },
-  { path: "/progress", label: "Progress", Icon: TrendingUp },
-  { path: "/journal", label: "Journal", Icon: BookMarked },
-  { path: "/profile", label: "Profile", Icon: User },
-];
-
-// Mobile bottom bar
-const TABS = [
+// Shared nav items for both sidebar (desktop) and bottom bar (mobile)
+const NAV_TABS = [
   { path: "/", label: "Today", Icon: BookOpen },
   { path: "/habits", label: "Habits", Icon: CheckSquare2 },
   { path: "/calendar", label: "Calendar", Icon: Calendar },
@@ -68,7 +58,7 @@ export function TabBar() {
         flexShrink: 0,
       }}
     >
-      {TABS.map(({ path, label, Icon }) => {
+      {NAV_TABS.map(({ path, label, Icon }) => {
         const active = location.pathname === path;
         const color = active ? colors.primary : colors.mutedForeground;
         return (
@@ -117,15 +107,18 @@ export function Sidebar() {
   const todayKey = toDateKey(new Date());
   const { done: todayDone, total: todayTotal } = getCompletionForDate(todayKey);
 
-  let streak = 0;
-  for (let i = 0; i < 60; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const { done, total } = getCompletionForDate(toDateKey(d));
-    if (total === 0) continue;
-    if (done > 0) streak++;
-    else break;
-  }
+  const streak = useMemo(() => {
+    let s = 0;
+    for (let i = 0; i < 60; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const { done, total } = getCompletionForDate(toDateKey(d));
+      if (total === 0) continue;
+      if (done > 0) s++;
+      else break;
+    }
+    return s;
+  }, [getCompletionForDate]);
 
   const toggle = () => {
     setSidebarCollapsed(!collapsed);
@@ -205,7 +198,7 @@ export function Sidebar() {
 
       {/* Nav items */}
       <div style={{ flex: 1, padding: collapsed ? "6px 8px" : "6px 10px", overflow: "hidden" }}>
-        {SIDEBAR_TABS.map(({ path, label, Icon }) => {
+        {NAV_TABS.map(({ path, label, Icon }) => {
           const active = location.pathname === path;
           const isHovered = hovered === path;
           return (

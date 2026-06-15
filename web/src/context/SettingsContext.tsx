@@ -4,13 +4,16 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { logError } from "@/lib/logger";
 
 import { THEMES, ThemeMeta, ThemeName } from "@/constants/themes";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/db/types";
 import { debounce } from "@/lib/debounce";
+import { mapProfileFromDB } from "@/lib/db/mappers";
 import { useAuth } from "@/context/AuthContext";
 
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -29,7 +32,6 @@ interface SettingsState {
   heightCm: string;
   customQuoteText: string;
   customQuoteAuthor: string;
-  // Moved from direct localStorage in TabBar + TodayScreen
   habitOrder: string[];
   sidebarCollapsed: boolean;
 }
@@ -93,23 +95,24 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       .single()
       .then(({ data, error }) => {
         if (data) {
+          const mapped = mapProfileFromDB(data);
           setSettings({
-            theme: (data.theme as ThemeName) || DEFAULTS.theme,
-            fontStyle: (data.font_style as FontStyle) || DEFAULTS.fontStyle,
-            fontSize: (data.font_size as FontSize) || DEFAULTS.fontSize,
-            userName: data.user_name ?? "",
-            userEmoji: data.user_emoji ?? "😊",
-            userAbout: data.user_about ?? "",
-            weightKg: data.weight_kg ?? "",
-            heightCm: data.height_cm ?? "",
-            customQuoteText: data.custom_quote_text ?? "",
-            customQuoteAuthor: data.custom_quote_author ?? "",
-            habitOrder: data.habit_order ?? [],
-            sidebarCollapsed: data.sidebar_collapsed ?? false,
+            theme: mapped.theme,
+            fontStyle: mapped.fontStyle,
+            fontSize: mapped.fontSize,
+            userName: mapped.userName,
+            userEmoji: mapped.userEmoji,
+            userAbout: mapped.userAbout,
+            weightKg: mapped.weightKg,
+            heightCm: mapped.heightCm,
+            customQuoteText: mapped.customQuoteText,
+            customQuoteAuthor: mapped.customQuoteAuthor,
+            habitOrder: mapped.habitOrder,
+            sidebarCollapsed: mapped.sidebarCollapsed,
           });
         } else if (error && error.code !== "PGRST116") {
           // PGRST116 = row not found (trigger hasn't fired yet on very first login)
-          console.error("[Habit Ink] Failed to load settings:", error.message);
+          logError("Failed to load settings", error.message);
         }
         setSettingsLoaded(true);
       });
@@ -126,32 +129,44 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         .eq("id", userId)
         .then(({ error }) => {
           if (error)
-            console.error("[Habit Ink] Settings save error:", error.message);
+            logError("Settings save error", error.message);
         });
     },
     [userId],
   );
 
-  // Single debounced writer — 800 ms for text inputs
-  const updateDebounced = useMemo(
+  // Batching debounce: accumulates all field changes within 800ms into one write.
+  // This prevents the previous bug where typing in one field cancelled another field's save.
+  const pendingPatchRef = useRef<ProfileUpdate>({});
+
+  const flushDebounced = useMemo(
     () =>
-      debounce((patch: ProfileUpdate, uid: string) => {
+      debounce((uid: string) => {
+        const patch = { ...pendingPatchRef.current };
+        pendingPatchRef.current = {};
+        if (Object.keys(patch).length === 0) return;
         supabase
           .from("profiles")
           .update(patch)
           .eq("id", uid)
           .then(({ error }) => {
             if (error)
-              console.error(
-                "[Habit Ink] Settings save error:",
-                error.message,
-              );
+              logError("Settings save error", error.message);
           });
       }, 800),
     [],
   );
 
-  // ── Immediate setters (button taps) ──────────────────────────────────────
+  const updateDebounced = useCallback(
+    (patch: ProfileUpdate) => {
+      if (!userId) return;
+      Object.assign(pendingPatchRef.current, patch);
+      flushDebounced(userId);
+    },
+    [flushDebounced, userId],
+  );
+
+  // ── Immediate setters (button taps / selects) ─────────────────────────────
 
   const setTheme = useCallback(
     (theme: ThemeName) => {
@@ -185,7 +200,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [updateImmediate],
   );
 
-  // Name saves on blur (fires once) — treat as immediate
+  // Name saves on blur — treat as immediate
   const setUserName = useCallback(
     (userName: string) => {
       setSettings((p) => ({ ...p, userName }));
@@ -215,42 +230,41 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const setUserAbout = useCallback(
     (userAbout: string) => {
       setSettings((p) => ({ ...p, userAbout }));
-      if (userId) updateDebounced({ user_about: userAbout }, userId);
+      updateDebounced({ user_about: userAbout });
     },
-    [updateDebounced, userId],
+    [updateDebounced],
   );
 
   const setWeightKg = useCallback(
     (weightKg: string) => {
       setSettings((p) => ({ ...p, weightKg }));
-      if (userId) updateDebounced({ weight_kg: weightKg }, userId);
+      updateDebounced({ weight_kg: weightKg });
     },
-    [updateDebounced, userId],
+    [updateDebounced],
   );
 
   const setHeightCm = useCallback(
     (heightCm: string) => {
       setSettings((p) => ({ ...p, heightCm }));
-      if (userId) updateDebounced({ height_cm: heightCm }, userId);
+      updateDebounced({ height_cm: heightCm });
     },
-    [updateDebounced, userId],
+    [updateDebounced],
   );
 
   const setCustomQuoteText = useCallback(
     (customQuoteText: string) => {
       setSettings((p) => ({ ...p, customQuoteText }));
-      if (userId) updateDebounced({ custom_quote_text: customQuoteText }, userId);
+      updateDebounced({ custom_quote_text: customQuoteText });
     },
-    [updateDebounced, userId],
+    [updateDebounced],
   );
 
   const setCustomQuoteAuthor = useCallback(
     (customQuoteAuthor: string) => {
       setSettings((p) => ({ ...p, customQuoteAuthor }));
-      if (userId)
-        updateDebounced({ custom_quote_author: customQuoteAuthor }, userId);
+      updateDebounced({ custom_quote_author: customQuoteAuthor });
     },
-    [updateDebounced, userId],
+    [updateDebounced],
   );
 
   // ── Reset (appearance only — does NOT touch habits/entries/journals) ──────

@@ -87,8 +87,15 @@ export default function ProfileScreen() {
 
   const handleWeightChange = (raw: string) => {
     if (!raw) { setWeightKg(""); return; }
-    if (weightUnit === "kg") { setWeightKg(raw); return; }
-    const kg = parseFloat(raw) / 2.20462;
+    const num = parseFloat(raw);
+    if (isNaN(num) || num < 0) return;
+    if (weightUnit === "kg") {
+      if (num > 500) return;
+      setWeightKg(raw);
+      return;
+    }
+    if (num > 1100) return;
+    const kg = num / 2.20462;
     setWeightKg(isNaN(kg) ? "" : kg.toFixed(2));
   };
 
@@ -108,8 +115,15 @@ export default function ProfileScreen() {
 
   const handleHeightChange = (raw: string) => {
     if (!raw) { setHeightCm(""); return; }
-    if (heightUnit === "cm") { setHeightCm(raw); return; }
-    const cm = parseFloat(raw) * 30.48;
+    const num = parseFloat(raw);
+    if (isNaN(num) || num < 0) return;
+    if (heightUnit === "cm") {
+      if (num > 300) return;
+      setHeightCm(raw);
+      return;
+    }
+    if (num > 10) return;
+    const cm = num * 30.48;
     setHeightCm(isNaN(cm) ? "" : cm.toFixed(1));
   };
 

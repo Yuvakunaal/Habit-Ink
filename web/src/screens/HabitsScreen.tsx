@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Pencil, Check, X, CheckCircle, Hash, Slash, Clock, Edit3, Archive, ArchiveRestore, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 
 import { Habit, HabitType, ScheduleType, toDateKey, useHabits } from "@/context/HabitContext";
@@ -81,11 +81,13 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
   const [emoji, setEmoji] = useState("✅");
   const [color, setColor] = useState("#2B3A8C");
   const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [saving, setSaving] = useState(false);
   const deleteConfirmTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (!visible) {
       setDeleteConfirming(false);
+      setSaving(false);
       clearTimeout(deleteConfirmTimer.current);
       return;
     }
@@ -126,7 +128,8 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
   const canSave = name.trim().length > 0 && !noDaysSelected;
 
   const save = () => {
-    if (!canSave) return;
+    if (!canSave || saving) return;
+    setSaving(true);
     let finalTarget = "";
     if (type === "yesno") {
       finalTarget = "Complete";
@@ -241,6 +244,7 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
             onChange={(e) => setName(e.target.value)}
             onBlur={(e) => setName(e.target.value.trim())}
             placeholder="What do you want to track?"
+            aria-label="Habit name"
             maxLength={80}
             style={{ ...inputBase, borderColor: name.trim() ? color : colors.border }}
           />
@@ -349,12 +353,16 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
         {/* Save */}
         <button
           onClick={save}
-          disabled={!canSave}
-          style={{ backgroundColor: canSave ? color : colors.muted, borderRadius: 14, paddingTop: 16, paddingBottom: 16, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: canSave ? 1 : 0.5, border: "none", cursor: canSave ? "pointer" : "default", marginTop: 6 }}
+          disabled={!canSave || saving}
+          aria-busy={saving}
+          style={{ backgroundColor: canSave ? color : colors.muted, borderRadius: 14, paddingTop: 16, paddingBottom: 16, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: canSave ? 1 : 0.5, border: "none", cursor: canSave && !saving ? "pointer" : "default", marginTop: 6, transition: "opacity 0.15s" }}
         >
-          {editing ? <Check size={18} color={canSave ? "#fff" : colors.mutedForeground} /> : <Plus size={18} color={canSave ? "#fff" : colors.mutedForeground} />}
+          {saving
+            ? <span style={{ width: 18, height: 18, border: "2.5px solid #ffffff60", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block", flexShrink: 0 }} />
+            : editing ? <Check size={18} color={canSave ? "#fff" : colors.mutedForeground} /> : <Plus size={18} color={canSave ? "#fff" : colors.mutedForeground} />
+          }
           <span style={{ ...font.label, fontSize: font.size(17), color: canSave ? "#fff" : colors.mutedForeground, fontWeight: 700 }}>
-            {editing ? "Save Changes" : "Add to Journal"}
+            {saving ? "Saving…" : editing ? "Save Changes" : "Add to Journal"}
           </span>
         </button>
 
@@ -437,8 +445,8 @@ function HabitCard({ habit, onEdit, inGrid }: { habit: Habit; onEdit: () => void
   const { getStreak, getCompletionRate } = useHabits();
   const [hovered, setHovered] = useState(false);
 
-  const streak = getStreak(habit.id);
-  const rate = getCompletionRate(habit.id, 30);
+  const streak = useMemo(() => getStreak(habit.id), [getStreak, habit.id]);
+  const rate = useMemo(() => getCompletionRate(habit.id, 30), [getCompletionRate, habit.id]);
   const accentColor = habit.color ?? "#2B3A8C";
 
   const [displayRate, setDisplayRate] = useState(0);

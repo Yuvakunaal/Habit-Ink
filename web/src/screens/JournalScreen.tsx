@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Clock, BookOpen, ArrowUpRight } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Clock, BookOpen, ArrowUpRight, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { toDateKey, useHabits } from "@/context/HabitContext";
@@ -293,24 +293,32 @@ export default function JournalScreen() {
 
   const todayKey = toDateKey(new Date());
 
-  // Build newest-first list of all days from appStartDate to today
-  const allDays: string[] = [];
-  const startD = new Date(appStartDate + "T12:00:00");
-  const cur = new Date();
-  cur.setHours(12, 0, 0, 0);
-  while (cur >= startD) {
-    allDays.push(toDateKey(new Date(cur)));
-    cur.setDate(cur.getDate() - 1);
-  }
+  // Memoized: only recomputed when appStartDate changes
+  const { allDays, monthGroups } = useMemo(() => {
+    const days: string[] = [];
+    const startD = new Date(appStartDate + "T12:00:00");
+    const cur = new Date();
+    cur.setHours(12, 0, 0, 0);
+    while (cur >= startD) {
+      days.push(toDateKey(new Date(cur)));
+      cur.setDate(cur.getDate() - 1);
+    }
 
-  // Group by year-month (newest group first)
-  const monthGroups: { ym: string; days: string[] }[] = [];
-  for (const day of allDays) {
-    const ym = day.slice(0, 7);
-    const last = monthGroups[monthGroups.length - 1];
-    if (last && last.ym === ym) last.days.push(day);
-    else monthGroups.push({ ym, days: [day] });
-  }
+    const groups: { ym: string; days: string[] }[] = [];
+    for (const day of days) {
+      const ym = day.slice(0, 7);
+      const last = groups[groups.length - 1];
+      if (last && last.ym === ym) last.days.push(day);
+      else groups.push({ ym, days: [day] });
+    }
+
+    return { allDays: days, monthGroups: groups };
+  }, [appStartDate]);
+
+  // Pagination: show newest 3 months by default, expand on demand
+  const [monthsVisible, setMonthsVisible] = useState(3);
+  const visibleGroups = monthGroups.slice(0, monthsVisible);
+  const hiddenCount = monthGroups.length - monthsVisible;
 
   const totalEntries = allDays.filter(k => {
     const j = journals[k];
@@ -372,8 +380,8 @@ export default function JournalScreen() {
                 </div>
               </div>
 
-              {/* Month groups */}
-              {monthGroups.map((group, gi) => (
+              {/* Month groups — paginated */}
+              {visibleGroups.map((group, gi) => (
                 <React.Fragment key={group.ym}>
                   <MonthDivider label={fmtMonthLabel(group.ym)} isFirst={gi === 0} />
 
@@ -386,7 +394,6 @@ export default function JournalScreen() {
                     ));
                     const dayNum = getDayNumber(new Date(dateKey + "T12:00:00"));
 
-                    // Today always gets a full card, other days only if they have content
                     if (isToday || hasContent) {
                       return (
                         <EntryCard key={dateKey} dateKey={dateKey} dayNumber={dayNum} isToday={isToday} />
@@ -399,20 +406,47 @@ export default function JournalScreen() {
                 </React.Fragment>
               ))}
 
-              {/* Origin marker — bottom of timeline */}
-              <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: 6 }}>
-                <div style={{ width: SPINE_W, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ width: 2, height: 10, backgroundColor: colors.border }} />
-                  <div style={{
-                    width: 10, height: 10, borderRadius: 5,
-                    backgroundColor: colors.border + "50",
-                    border: `2px solid ${colors.border}`,
-                  }} />
+              {/* "Show earlier" button — shown when more months are hidden */}
+              {hiddenCount > 0 && (
+                <div style={{ display: "flex", flexDirection: "row", marginTop: 6 }}>
+                  <div style={{ width: SPINE_W, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 2, flex: 1, background: `linear-gradient(to bottom, ${colors.border}, transparent)` }} />
+                  </div>
+                  <div style={{ flex: 1, paddingLeft: 14, paddingBottom: 20 }}>
+                    <button
+                      onClick={() => setMonthsVisible(v => v + 3)}
+                      style={{
+                        display: "flex", flexDirection: "row", alignItems: "center", gap: 7,
+                        background: "none", border: `1px solid ${colors.border}`,
+                        borderRadius: 10, padding: "8px 14px",
+                        cursor: "pointer", color: colors.mutedForeground,
+                      }}
+                    >
+                      <ChevronLeft size={13} color={colors.mutedForeground} />
+                      <span style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground }}>
+                        Show earlier ({hiddenCount} more month{hiddenCount !== 1 ? "s" : ""})
+                      </span>
+                    </button>
+                  </div>
                 </div>
-                <span style={{ ...font.body, fontSize: font.size(11), color: colors.border, paddingLeft: 12 }}>
-                  {originLabel}
-                </span>
-              </div>
+              )}
+
+              {/* Origin marker — only shown when all months are visible */}
+              {hiddenCount === 0 && (
+                <div style={{ display: "flex", flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+                  <div style={{ width: SPINE_W, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 2, height: 10, backgroundColor: colors.border }} />
+                    <div style={{
+                      width: 10, height: 10, borderRadius: 5,
+                      backgroundColor: colors.border + "50",
+                      border: `2px solid ${colors.border}`,
+                    }} />
+                  </div>
+                  <span style={{ ...font.body, fontSize: font.size(11), color: colors.border, paddingLeft: 12 }}>
+                    {originLabel}
+                  </span>
+                </div>
+              )}
             </>
           )}
         </div>

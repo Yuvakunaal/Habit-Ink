@@ -10,7 +10,9 @@ import React, {
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/db/types";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { migrateLocalStorageToSupabase } from "@/lib/auth/migration";
+import { logError } from "@/lib/logger";
 
 type HabitUpdate = Database["public"]["Tables"]["habits"]["Update"];
 type HabitInsert = Database["public"]["Tables"]["habits"]["Insert"];
@@ -71,6 +73,7 @@ interface HabitContextType {
   journals: Record<string, DailyJournal>;
   appStartDate: string;
   dataLoaded: boolean;
+  refetchAll: () => void;
   addHabit: (habit: Omit<Habit, "id" | "createdAt">) => void;
   updateHabit: (id: string, habit: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
@@ -87,7 +90,7 @@ interface HabitContextType {
 
 const HabitContext = createContext<HabitContextType | null>(null);
 
-// ── Utility functions (re-exported for use by other modules) ──────────────────
+// ── Pure utility functions (exported for use elsewhere) ───────────────────────
 
 export function toDateKey(date: Date): string {
   const y = date.getFullYear();
@@ -121,10 +124,36 @@ export function isScheduledForDate(habit: Habit, dateKey: string): boolean {
   }
 }
 
+/**
+ * Computes the streak a habit WILL have after marking today as done.
+ * Assumes today is done (starts at 1) and counts consecutive done days backward.
+ * Used by TodayScreen for milestone toast checks, called before the optimistic update.
+ */
+export function computeNewStreak(
+  habitId: string,
+  habits: Habit[],
+  entries: Record<string, HabitEntry[]>,
+): number {
+  const habit = habits.find((h) => h.id === habitId);
+  if (!habit) return 1;
+  let streak = 1;
+  for (let i = 1; i < 365; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = toDateKey(d);
+    if (!isScheduledForDate(habit, key)) continue;
+    const entry = (entries[key] ?? []).find((e) => e.habitId === habitId);
+    if (entry?.status === "done") streak++;
+    else break;
+  }
+  return streak;
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function HabitProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const userId = user?.id ?? null;
 
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -133,18 +162,34 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   const [appStartDate, setAppStartDate] = useState(toDateKey(new Date()));
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Refs let debounce callbacks read latest state without stale closures
+  // Refs for closure-safe access in callbacks and debounce timers
   const journalsRef = useRef(journals);
   const entriesRef = useRef(entries);
-  useEffect(() => {
-    journalsRef.current = journals;
-  }, [journals]);
-  useEffect(() => {
-    entriesRef.current = entries;
-  }, [entries]);
+  const habitsRef = useRef(habits);
+  useEffect(() => { journalsRef.current = journals; }, [journals]);
+  useEffect(() => { entriesRef.current = entries; }, [entries]);
+  useEffect(() => { habitsRef.current = habits; }, [habits]);
 
   // Per-date debounce timers for journal saves
   const journalTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  // ── Full data re-fetch (used by realtime reconnect handler) ───────────────
+
+  const refetchAll = useCallback(() => {
+    if (!userId) return;
+    Promise.all([
+      supabase.from("habits").select("*").eq("user_id", userId).order("created_at"),
+      supabase.from("habit_entries").select("*").eq("user_id", userId),
+      supabase.from("journals").select("*").eq("user_id", userId),
+    ]).then(([habitsRes, entriesRes, journalsRes]) => {
+      if (habitsRes.error) logError("refetchAll habits failed", habitsRes.error);
+      else setHabits(habitsRes.data.map(mapHabitFromDB));
+      if (entriesRes.error) logError("refetchAll entries failed", entriesRes.error);
+      else setEntries(buildEntriesMap(entriesRes.data));
+      if (journalsRes.error) logError("refetchAll journals failed", journalsRes.error);
+      else setJournals(buildJournalsMap(journalsRes.data));
+    }).catch((err) => logError("refetchAll network error", err));
+  }, [userId]);
 
   // ── Load & migrate on login ───────────────────────────────────────────────
 
@@ -161,7 +206,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     setDataLoaded(false);
 
     (async () => {
-      // One-time migration from localStorage (no-op if already migrated)
       await migrateLocalStorageToSupabase(userId);
 
       const [habitsRes, entriesRes, journalsRes, profileRes] = await Promise.all(
@@ -189,8 +233,8 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
 
       setDataLoaded(true);
     })().catch((err) => {
-      console.error("[Habit Ink] Data load failed:", err);
-      setDataLoaded(true); // don't hang the UI
+      logError("Data load failed", err);
+      setDataLoaded(true);
     });
   }, [userId]);
 
@@ -203,24 +247,13 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
       .channel(`habits_rt_${userId}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "habits",
-          filter: `user_id=eq.${userId}`,
-        },
+        { event: "*", schema: "public", table: "habits", filter: `user_id=eq.${userId}` },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            const h = mapHabitFromDB(
-              payload.new as Parameters<typeof mapHabitFromDB>[0],
-            );
-            setHabits((prev) =>
-              prev.find((x) => x.id === h.id) ? prev : [...prev, h],
-            );
+            const h = mapHabitFromDB(payload.new as Parameters<typeof mapHabitFromDB>[0]);
+            setHabits((prev) => prev.find((x) => x.id === h.id) ? prev : [...prev, h]);
           } else if (payload.eventType === "UPDATE") {
-            const h = mapHabitFromDB(
-              payload.new as Parameters<typeof mapHabitFromDB>[0],
-            );
+            const h = mapHabitFromDB(payload.new as Parameters<typeof mapHabitFromDB>[0]);
             setHabits((prev) => prev.map((x) => (x.id === h.id ? h : x)));
           } else if (payload.eventType === "DELETE") {
             const id = payload.old.id as string;
@@ -228,26 +261,20 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          refetchAll();
+        }
+      });
 
     const entriesChannel = supabase
       .channel(`entries_rt_${userId}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "habit_entries",
-          filter: `user_id=eq.${userId}`,
-        },
+        { event: "*", schema: "public", table: "habit_entries", filter: `user_id=eq.${userId}` },
         (payload) => {
-          if (
-            payload.eventType === "INSERT" ||
-            payload.eventType === "UPDATE"
-          ) {
-            const entry = mapEntryFromDB(
-              payload.new as Parameters<typeof mapEntryFromDB>[0],
-            );
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+            const entry = mapEntryFromDB(payload.new as Parameters<typeof mapEntryFromDB>[0]);
             setEntries((prev) => {
               const day = prev[entry.date] ?? [];
               const idx = day.findIndex((e) => e.habitId === entry.habitId);
@@ -258,7 +285,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
               return { ...prev, [entry.date]: next };
             });
           } else if (payload.eventType === "DELETE") {
-            // REPLICA IDENTITY DEFAULT: old only has PK (id). Re-fetch to stay in sync.
+            // REPLICA IDENTITY DEFAULT: old only has PK. Re-fetch to stay in sync.
             supabase
               .from("habit_entries")
               .select("*")
@@ -269,23 +296,19 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          refetchAll();
+        }
+      });
 
     const journalsChannel = supabase
       .channel(`journals_rt_${userId}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "journals",
-          filter: `user_id=eq.${userId}`,
-        },
+        { event: "*", schema: "public", table: "journals", filter: `user_id=eq.${userId}` },
         (payload) => {
-          if (
-            payload.eventType === "INSERT" ||
-            payload.eventType === "UPDATE"
-          ) {
+          if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
             const row = payload.new as {
               date: string;
               wake_up_time: string;
@@ -306,14 +329,18 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          refetchAll();
+        }
+      });
 
     return () => {
       supabase.removeChannel(habitsChannel);
       supabase.removeChannel(entriesChannel);
       supabase.removeChannel(journalsChannel);
     };
-  }, [userId]);
+  }, [userId, refetchAll]);
 
   // ── Habit mutations ───────────────────────────────────────────────────────
 
@@ -328,26 +355,31 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         color: habit.color ?? "#2B3A8C",
         createdAt: now,
       };
-      // Optimistic
       setHabits((prev) => [...prev, newHabit]);
-      // Background write
-      const insertRow: HabitInsert = { ...mapHabitToDB(newHabit, userId), id: newHabit.id, created_at: now };
+      const insertRow: HabitInsert = {
+        ...mapHabitToDB(newHabit, userId),
+        id: newHabit.id,
+        created_at: now,
+      };
       supabase
         .from("habits")
         .insert(insertRow)
         .then(({ error }) => {
-          if (error) console.error("[Habit Ink] addHabit error:", error.message);
+          if (error) {
+            setHabits((prev) => prev.filter((h) => h.id !== newHabit.id));
+            showToast("Couldn't save habit — check your connection", "error");
+          }
         });
     },
-    [userId],
+    [userId, showToast],
   );
 
   const updateHabit = useCallback(
     (id: string, update: Partial<Habit>) => {
       if (!userId) return;
-      // Optimistic
+      // Capture snapshot before optimistic update for rollback
+      const previous = habitsRef.current.find((h) => h.id === id);
       setHabits((prev) => prev.map((h) => (h.id === id ? { ...h, ...update } : h)));
-      // Build DB patch (only the updated fields)
       const patch: HabitUpdate = {};
       if (update.name !== undefined) patch.name = update.name;
       if (update.type !== undefined) patch.type = update.type;
@@ -363,17 +395,22 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         .from("habits")
         .update(patch)
         .eq("id", id)
+        .eq("user_id", userId)
         .then(({ error }) => {
-          if (error) console.error("[Habit Ink] updateHabit error:", error.message);
+          if (error) {
+            if (previous) setHabits((prev) => prev.map((h) => (h.id === id ? previous : h)));
+            showToast("Couldn't update habit — check your connection", "error");
+          }
         });
     },
-    [userId],
+    [userId, showToast],
   );
 
   const deleteHabit = useCallback(
     (id: string) => {
       if (!userId) return;
-      // Optimistic
+      const prevHabits = habitsRef.current;
+      const prevEntries = entriesRef.current;
       setHabits((prev) => prev.filter((h) => h.id !== id));
       setEntries((prev) => {
         const next = { ...prev };
@@ -382,22 +419,31 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         }
         return next;
       });
-      // Background delete (cascade removes entries in DB)
       supabase
         .from("habits")
         .delete()
         .eq("id", id)
+        .eq("user_id", userId)
         .then(({ error }) => {
-          if (error) console.error("[Habit Ink] deleteHabit error:", error.message);
+          if (error) {
+            setHabits(prevHabits);
+            setEntries(prevEntries);
+            showToast("Couldn't delete habit — check your connection", "error");
+          }
         });
     },
-    [userId],
+    [userId, showToast],
   );
 
   // ── Entry mutations ───────────────────────────────────────────────────────
 
   const upsertEntry = useCallback(
-    (habitId: string, date: string, patch: Partial<HabitEntry>) => {
+    (
+      habitId: string,
+      date: string,
+      patch: Partial<HabitEntry>,
+      rollbackDay: HabitEntry[],
+    ) => {
       if (!userId) return;
       const current = (entriesRef.current[date] ?? []).find(
         (e) => e.habitId === habitId,
@@ -420,16 +466,18 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         .from("habit_entries")
         .upsert(entryRow, { onConflict: "habit_id,date" })
         .then(({ error }) => {
-          if (error)
-            console.error("[Habit Ink] upsertEntry error:", error.message);
+          if (error) {
+            setEntries((prev) => ({ ...prev, [date]: rollbackDay }));
+            showToast("Couldn't save entry — check your connection", "error");
+          }
         });
     },
-    [userId],
+    [userId, showToast],
   );
 
   const setEntryStatus = useCallback(
     (habitId: string, date: string, status: EntryStatus) => {
-      // Optimistic
+      const rollbackDay = entriesRef.current[date] ?? [];
       setEntries((prev) => {
         const day = prev[date] ?? [];
         const idx = day.findIndex((e) => e.habitId === habitId);
@@ -439,14 +487,14 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
             : [...day, { habitId, date, status, actual: "" }];
         return { ...prev, [date]: updated };
       });
-      upsertEntry(habitId, date, { status });
+      upsertEntry(habitId, date, { status }, rollbackDay);
     },
     [upsertEntry],
   );
 
   const setEntryActual = useCallback(
     (habitId: string, date: string, actual: string) => {
-      // Optimistic
+      const rollbackDay = entriesRef.current[date] ?? [];
       setEntries((prev) => {
         const day = prev[date] ?? [];
         const idx = day.findIndex((e) => e.habitId === habitId);
@@ -456,7 +504,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
             : [...day, { habitId, date, status: "pending" as const, actual }];
         return { ...prev, [date]: updated };
       });
-      upsertEntry(habitId, date, { actual });
+      upsertEntry(habitId, date, { actual }, rollbackDay);
     },
     [upsertEntry],
   );
@@ -466,7 +514,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
   const updateJournal = useCallback(
     (date: string, update: Partial<DailyJournal>) => {
       if (!userId) return;
-      // Optimistic
       setJournals((prev) => {
         const existing = prev[date] ?? {
           date,
@@ -478,7 +525,6 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         };
         return { ...prev, [date]: { ...existing, ...update } };
       });
-      // Per-date debounce — 800ms
       const timers = journalTimers.current;
       const existing = timers.get(date);
       if (existing) clearTimeout(existing);
@@ -502,10 +548,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
             .upsert(journalRow, { onConflict: "user_id,date" })
             .then(({ error }) => {
               if (error)
-                console.error(
-                  "[Habit Ink] journal save error:",
-                  error.message,
-                );
+                logError("journal save error", error);
             });
         }, 800),
       );
@@ -585,18 +628,9 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
     (date?: Date): number => {
       const start = new Date(appStartDate + "T12:00:00");
       const d = date ?? new Date();
-      const target = new Date(
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate(),
-        12,
-        0,
-        0,
-      );
+      const target = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
       return (
-        Math.floor(
-          (target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-        ) + 1
+        Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
       );
     },
     [appStartDate],
@@ -610,6 +644,7 @@ export function HabitProvider({ children }: { children: React.ReactNode }) {
         journals,
         appStartDate,
         dataLoaded,
+        refetchAll,
         addHabit,
         updateHabit,
         deleteHabit,

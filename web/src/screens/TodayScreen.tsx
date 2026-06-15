@@ -1,17 +1,23 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, CheckCircle2, XCircle, Circle,
   Settings, Feather as FeatherIcon, CheckCircle, Clock, Keyboard, GripVertical,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { EntryStatus, HabitType, isScheduledForDate, toDateKey, useHabits } from "@/context/HabitContext";
+import {
+  EntryStatus, HabitType, isScheduledForDate, toDateKey,
+  useHabits, computeNewStreak,
+} from "@/context/HabitContext";
 import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/context/ToastContext";
 import { Confetti } from "@/components/Confetti";
+
+// Survives tab navigation (component remounts) — module-level singleton
+const confettiFiredDates = new Set<string>();
 
 const QUOTES = [
   { text: "Small steps every day lead to big changes.", author: "Anonymous" },
@@ -50,12 +56,12 @@ function formatDisplayDate(date: Date): string {
   return `${months[date.getMonth()]} ${day}${suffix}, ${date.getFullYear()}`;
 }
 
-function StatusBtn({ status, onPress }: { status: EntryStatus; onPress: () => void }) {
+function StatusBtn({ status, habitName, onPress }: { status: EntryStatus; habitName: string; onPress: () => void }) {
   const colors = useColors();
   const IconComp = status === "done" ? CheckCircle2 : status === "missed" ? XCircle : Circle;
   const color = status === "done" ? colors.success : status === "missed" ? colors.accent : colors.mutedForeground;
   return (
-    <button onClick={onPress} style={{ padding: 4, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.1s" }}
+    <button onClick={onPress} aria-label={`Mark ${habitName} as ${status === "done" ? "missed" : status === "missed" ? "pending" : "done"}`} style={{ padding: 4, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.1s" }}
       onMouseDown={(e) => (e.currentTarget.style.transform = "scale(1.3)")}
       onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
       onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
@@ -91,7 +97,8 @@ function WeekStrip({ dateKey }: { dateKey: string }) {
   const font = useFont();
   const { getCompletionForDate } = useHabits();
   const DAY_LETTERS = ["Su","M","T","W","T","F","S"];
-  const days = Array.from({ length: 7 }).map((_, i) => {
+
+  const days = useMemo(() => Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     const key = toDateKey(d);
@@ -99,7 +106,8 @@ function WeekStrip({ dateKey }: { dateKey: string }) {
     const isToday = key === dateKey;
     const pct = total === 0 ? -1 : done / total;
     return { key, pct, isToday, label: DAY_LETTERS[d.getDay()] };
-  });
+  }), [getCompletionForDate, dateKey]);
+
   return (
     <div style={{ display: "flex", flexDirection: "row", gap: 5, marginBottom: 12 }}>
       {days.map((day) => {
@@ -161,12 +169,12 @@ function ActualCell({ initialValue, habitType, onSave }: { initialValue: string;
   return <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} onBlur={() => onSave(value.trim())} onKeyDown={(e) => e.key === "Enter" && onSave(value.trim())} placeholder="—" style={baseStyle} />;
 }
 
-function AutoTextarea({ value, onChange, placeholder, style }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; placeholder: string; style?: React.CSSProperties }) {
+function AutoTextarea({ value, onChange, placeholder, style, "aria-label": ariaLabel }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; placeholder: string; style?: React.CSSProperties; "aria-label"?: string }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (ref.current) { ref.current.style.height = "auto"; ref.current.style.height = Math.max(80, ref.current.scrollHeight) + "px"; }
   }, [value]);
-  return <textarea ref={ref} value={value} onChange={onChange} placeholder={placeholder} style={{ overflow: "hidden", resize: "none", ...style }} />;
+  return <textarea ref={ref} value={value} onChange={onChange} placeholder={placeholder} aria-label={ariaLabel} style={{ overflow: "hidden", resize: "none", ...style }} />;
 }
 
 export default function TodayScreen() {
@@ -191,44 +199,60 @@ export default function TodayScreen() {
     return new Date();
   });
 
-  // Clear the ?date= param from URL after it's been consumed
   useEffect(() => {
     if (searchParams.get("date")) setSearchParams({}, { replace: true });
   }, []);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [journalSaved, setJournalSaved] = useState(false);
+  const journalSavedTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => () => clearTimeout(journalSavedTimer.current), []);
+
+  const handleJournalUpdate = useCallback((dateKey: string, patch: Parameters<typeof updateJournal>[1]) => {
+    updateJournal(dateKey, patch);
+    clearTimeout(journalSavedTimer.current);
+    setJournalSaved(true);
+    journalSavedTimer.current = setTimeout(() => setJournalSaved(false), 1800);
+  }, [updateJournal]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [focusedHabitIdx, setFocusedHabitIdx] = useState(-1);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const confettiFiredRef = useRef<string | null>(null);
 
-  // Persistent drag-to-reorder order (backed by Supabase via SettingsContext)
+  // Drag-to-reorder — persisted in SettingsContext via Supabase
   const { habitOrder, setHabitOrder } = useSettings();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  // Ref so drag handlers always see the latest order without stale closures
-  const habitOrderRef = useRef(habitOrder);
-  habitOrderRef.current = habitOrder;
+  // Local drag order: used only during an active drag so we don't fire DB writes on every pixel moved.
+  // Persisted to Supabase only on dragEnd.
+  const [dragOrder, setDragOrder] = useState<string[] | null>(null);
 
   const dateKey = toDateKey(currentDate);
-  const habitsToday = getHabitsForDate(dateKey).filter(h => !h.archived);
+  const isToday = dateKey === toDateKey(new Date());
 
-  // Apply saved order to today's scheduled habits
-  const orderedHabits = [
-    ...habitOrderRef.current
-      .filter(id => habitsToday.some(h => h.id === id))
-      .map(id => habitsToday.find(h => h.id === id)!),
-    ...habitsToday.filter(h => !habitOrderRef.current.includes(h.id)),
-  ].filter(Boolean) as typeof habitsToday;
+  // Memoize habitsToday so re-renders don't rebuild the filtered array unnecessarily
+  const habitsToday = useMemo(
+    () => getHabitsForDate(dateKey).filter((h) => !h.archived),
+    [getHabitsForDate, dateKey],
+  );
+
+  // Resolve display order: use local drag preview if dragging, otherwise persisted order
+  const activeOrder = dragOrder ?? habitOrder;
+  const orderedHabits = useMemo(() => [
+    ...activeOrder
+      .filter((id) => habitsToday.some((h) => h.id === id))
+      .map((id) => habitsToday.find((h) => h.id === id)!),
+    ...habitsToday.filter((h) => !activeOrder.includes(h.id)),
+  ].filter(Boolean) as typeof habitsToday, [activeOrder, habitsToday]);
 
   const journal = journals[dateKey] ?? { date: dateKey, wakeUpTime: "", intention: "", notes: "", wins: "", challenges: "" };
-  const isToday = toDateKey(currentDate) === toDateKey(new Date());
 
-  const doneCount = habitsToday.filter(h => getEntry(h.id, dateKey)?.status === "done").length;
-  const missedCount = habitsToday.filter(h => getEntry(h.id, dateKey)?.status === "missed").length;
+  const doneCount = habitsToday.filter((h) => getEntry(h.id, dateKey)?.status === "done").length;
+  const missedCount = habitsToday.filter((h) => getEntry(h.id, dateKey)?.status === "missed").length;
 
   const appStart = new Date(appStartDate + "T00:00:00");
-  const atStart = toDateKey(currentDate) === appStartDate;
+  const atStart = dateKey === appStartDate;
 
   const navigate2 = (delta: number) => {
     const d = new Date(currentDate);
@@ -236,41 +260,30 @@ export default function TodayScreen() {
     if (d <= new Date() && d >= appStart) { setCurrentDate(d); setEditingId(null); setFocusedHabitIdx(-1); }
   };
 
-  const computeNewStreak = useCallback((habitId: string): number => {
-    const habit = habits.find(h => h.id === habitId);
-    if (!habit) return 1;
-    let streak = 1;
-    for (let i = 1; i < 365; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = toDateKey(d);
-      if (!isScheduledForDate(habit, key)) continue;
-      const entry = (entries[key] ?? []).find(e => e.habitId === habitId);
-      if (entry?.status === "done") streak++;
-      else break;
-    }
-    return streak;
-  }, [habits, entries]);
-
   const markHabit = useCallback((habitId: string, status: EntryStatus) => {
-    if (status === "done") {
-      const newStreak = computeNewStreak(habitId);
+    if (status === "done" && isToday) {
+      // computeNewStreak is a pure fn that assumes today will be done
+      // Called BEFORE setEntryStatus so entries is still the pre-update snapshot
+      const newStreak = computeNewStreak(habitId, habits, entries);
       if (MILESTONES.includes(newStreak)) {
-        const name = habits.find(h => h.id === habitId)?.name ?? "habit";
+        const name = habits.find((h) => h.id === habitId)?.name ?? "habit";
         setTimeout(() => showToast(`🔥 ${newStreak}-day streak on "${name}"!`, "success"), 350);
       }
     }
     setEntryStatus(habitId, dateKey, status);
-  }, [computeNewStreak, habits, showToast, setEntryStatus, dateKey]);
+  }, [habits, entries, showToast, setEntryStatus, dateKey, isToday]);
 
   const cycleStatus = useCallback((habitId: string, current?: EntryStatus) => {
     const next: EntryStatus = current === "done" ? "missed" : current === "missed" ? "pending" : "done";
     markHabit(habitId, next);
   }, [markHabit]);
 
-  // Drag-to-reorder handlers
+  // ── Drag-to-reorder handlers ──────────────────────────────────────────────
+  // Visual preview updates during drag; DB write fires only once on dragEnd.
+
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggingId(id);
+    setDragOrder(activeOrder.length > 0 ? activeOrder : habitsToday.map((h) => h.id));
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -279,33 +292,34 @@ export default function TodayScreen() {
     e.dataTransfer.dropEffect = "move";
     if (!draggingId || draggingId === overId) return;
     setDragOverId(overId);
-    const order = habitOrderRef.current;
-    // Build current full order for today's habits
-    const allIds = [
-      ...order.filter(id => habitsToday.some(h => h.id === id)),
-      ...habitsToday.filter(h => !order.includes(h.id)).map(h => h.id),
-    ];
-    const fromIdx = allIds.indexOf(draggingId);
-    const toIdx = allIds.indexOf(overId);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const newOrder = [...allIds];
-    newOrder.splice(fromIdx, 1);
-    newOrder.splice(toIdx, 0, draggingId);
-    // Update ref immediately so next dragover sees the new order
-    habitOrderRef.current = newOrder;
-    setHabitOrder(newOrder);
+    setDragOrder((prev) => {
+      const order = prev ?? habitsToday.map((h) => h.id);
+      const allIds = [
+        ...order.filter((id) => habitsToday.some((h) => h.id === id)),
+        ...habitsToday.filter((h) => !order.includes(h.id)).map((h) => h.id),
+      ];
+      const fromIdx = allIds.indexOf(draggingId);
+      const toIdx = allIds.indexOf(overId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const newOrder = [...allIds];
+      newOrder.splice(fromIdx, 1);
+      newOrder.splice(toIdx, 0, draggingId);
+      return newOrder;
+    });
   };
 
   const handleDragEnd = () => {
+    if (dragOrder) setHabitOrder(dragOrder); // single DB write on drop
     setDraggingId(null);
     setDragOverId(null);
+    setDragOrder(null);
   };
 
-  // Confetti: fire once when all done today
+  // Confetti: fire once per date per session — module-level Set survives tab navigation
   const allDone = habitsToday.length > 0 && doneCount === habitsToday.length;
   useEffect(() => {
-    if (allDone && isToday && confettiFiredRef.current !== dateKey) {
-      confettiFiredRef.current = dateKey;
+    if (allDone && isToday && !confettiFiredDates.has(dateKey)) {
+      confettiFiredDates.add(dateKey);
       setShowConfetti(true);
       setTimeout(() => showToast("🎉 All habits done! Amazing work!", "success"), 400);
     }
@@ -317,10 +331,10 @@ export default function TodayScreen() {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (e.key === "?") { setShowShortcuts(s => !s); return; }
+      if (e.key === "?") { setShowShortcuts((s) => !s); return; }
       if (e.key === "Escape") { setShowShortcuts(false); setFocusedHabitIdx(-1); return; }
-      if (e.key === "ArrowDown") { e.preventDefault(); setFocusedHabitIdx(i => Math.min(i + 1, orderedHabits.length - 1)); return; }
-      if (e.key === "ArrowUp") { e.preventDefault(); setFocusedHabitIdx(i => Math.max(i - 1, 0)); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocusedHabitIdx((i) => Math.min(i + 1, orderedHabits.length - 1)); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setFocusedHabitIdx((i) => Math.max(i - 1, 0)); return; }
       if (focusedHabitIdx >= 0 && focusedHabitIdx < orderedHabits.length) {
         const habit = orderedHabits[focusedHabitIdx];
         if (e.key.toLowerCase() === "d") { markHabit(habit.id, "done"); return; }
@@ -355,7 +369,7 @@ export default function TodayScreen() {
       {/* Keyboard shortcuts overlay */}
       {showShortcuts && (
         <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 998, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 20, padding: "28px 32px", maxWidth: 360, width: "90%", border: `1px solid ${colors.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 20, padding: "28px 32px", maxWidth: 360, width: "90%", border: `1px solid ${colors.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.2)" }}>
             <p style={{ ...font.heading, fontSize: font.size(20), color: colors.primary, marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
               <Keyboard size={20} color={colors.primary} /> Keyboard Shortcuts
             </p>
@@ -386,7 +400,7 @@ export default function TodayScreen() {
 
           {/* Header */}
           <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <button onClick={() => navigate2(-1)} disabled={atStart} style={{ padding: 8, width: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: atStart ? "default" : "pointer", background: "none", border: "none", opacity: atStart ? 0.25 : 1 }}>
+            <button onClick={() => navigate2(-1)} disabled={atStart} aria-label="Previous day" style={{ padding: 8, width: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: atStart ? "default" : "pointer", background: "none", border: "none", opacity: atStart ? 0.25 : 1 }}>
               <ChevronLeft size={22} color={colors.mutedForeground} />
             </button>
             <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, flex: 1, justifyContent: "center" }}>
@@ -394,11 +408,11 @@ export default function TodayScreen() {
             </div>
             <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 4 }}>
               {isDesktop && (
-                <button onClick={() => setShowShortcuts(s => !s)} title="Keyboard shortcuts (?)" style={{ padding: 6, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: `1px solid ${colors.border}`, borderRadius: 8 }}>
+                <button onClick={() => setShowShortcuts((s) => !s)} title="Keyboard shortcuts (?)" style={{ padding: 6, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "none", border: `1px solid ${colors.border}`, borderRadius: 8 }}>
                   <span style={{ ...font.label, fontSize: font.size(12), color: colors.mutedForeground }}>?</span>
                 </button>
               )}
-              <button onClick={() => navigate2(1)} disabled={isToday} style={{ padding: 8, width: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: isToday ? "default" : "pointer", background: "none", border: "none", opacity: isToday ? 0 : 1 }}>
+              <button onClick={() => navigate2(1)} disabled={isToday} aria-label="Next day" style={{ padding: 8, width: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: isToday ? "default" : "pointer", background: "none", border: "none", opacity: isToday ? 0 : 1 }}>
                 <ChevronRight size={22} color={colors.mutedForeground} />
               </button>
               {!isDesktop && (
@@ -435,7 +449,8 @@ export default function TodayScreen() {
             <input
               type="text"
               value={journal.intention ?? ""}
-              onChange={e => updateJournal(dateKey, { intention: e.target.value })}
+              aria-label="Today's intention"
+              onChange={(e) => handleJournalUpdate(dateKey, { intention: e.target.value })}
               placeholder="Today's intention…"
               maxLength={120}
               style={{ flex: 1, background: "none", border: "none", outline: "none", ...font.body, fontSize: font.size(15), color: colors.foreground }}
@@ -460,7 +475,7 @@ export default function TodayScreen() {
           <div style={{ display: "flex", flexDirection: "row", alignItems: "center", backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "9px 14px", marginBottom: 12, gap: 10 }}>
             <Clock size={15} color={colors.primary} style={{ flexShrink: 0 }} />
             <span style={{ ...font.label, fontSize: font.size(14), color: colors.primary, flexShrink: 0 }}>Wake-up</span>
-            <input type="time" value={toTimeValue(journal.wakeUpTime)} onChange={e => updateJournal(dateKey, { wakeUpTime: e.target.value })}
+            <input type="time" aria-label="Wake-up time" value={toTimeValue(journal.wakeUpTime)} onChange={(e) => handleJournalUpdate(dateKey, { wakeUpTime: e.target.value })}
               style={{ ...font.body, fontSize: font.size(15), color: colors.foreground, flex: 1, background: "none", border: "none", outline: "none", colorScheme: theme === "midnight" ? "dark" : "light", cursor: "pointer" } as React.CSSProperties} />
           </div>
 
@@ -490,7 +505,7 @@ export default function TodayScreen() {
             </div>
 
             {orderedHabits.length === 0 ? (
-              habits.filter(h => !h.archived).length === 0 ? (
+              habits.filter((h) => !h.archived).length === 0 ? (
                 <div style={{ padding: "28px 20px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <span style={{ fontSize: 48, marginBottom: 10 }}>📓</span>
                   <p style={{ ...font.heading, fontSize: font.size(22), color: colors.foreground, marginBottom: 6, textAlign: "center" }}>Welcome to Habit Ink</p>
@@ -556,7 +571,6 @@ export default function TodayScreen() {
                       minHeight: 50,
                       borderBottom: isLast ? "none" : `1px solid ${colors.border}`,
                       borderLeft: `3px solid ${isFocused ? colors.primary : habit.color}`,
-                      // Insertion line above drag-over row
                       boxShadow: isDragOver ? `inset 0 2px 0 0 ${colors.primary}` : undefined,
                       backgroundColor: isDragging
                         ? colors.muted
@@ -603,7 +617,7 @@ export default function TodayScreen() {
 
                     {/* Status toggle */}
                     <div style={{ width: DONE_W, padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <StatusBtn status={entry?.status ?? "pending"} onPress={() => cycleStatus(habit.id, entry?.status)} />
+                      <StatusBtn status={entry?.status ?? "pending"} habitName={habit.name} onPress={() => cycleStatus(habit.id, entry?.status)} />
                     </div>
                     <div style={{ width: 1, backgroundColor: colors.border }} />
 
@@ -656,17 +670,24 @@ export default function TodayScreen() {
           )}
 
           {/* Journal */}
-          <p style={{ ...font.label, fontSize: font.size(20), color: colors.primary, marginBottom: 6, marginTop: isToday ? 16 : 0 }}>Notes:</p>
-          <AutoTextarea value={journal.notes} onChange={e => updateJournal(dateKey, { notes: e.target.value })} placeholder={prompt.notes} style={textareaBase} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: isToday ? 16 : 0, marginBottom: 6 }}>
+            <p style={{ ...font.label, fontSize: font.size(20), color: colors.primary, margin: 0 }}>Notes:</p>
+            {journalSaved && (
+              <span style={{ ...font.body, fontSize: font.size(12), color: colors.success, display: "flex", alignItems: "center", gap: 3, animation: "pillIn 0.15s ease-out" }}>
+                ✓ Saved
+              </span>
+            )}
+          </div>
+          <AutoTextarea aria-label="Journal notes" value={journal.notes} onChange={(e) => handleJournalUpdate(dateKey, { notes: e.target.value })} placeholder={prompt.notes} style={textareaBase} />
 
           <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", gap: isDesktop ? 12 : 0, marginTop: 12 }}>
             <div style={{ flex: 1 }}>
               <p style={{ ...font.label, fontSize: font.size(20), color: colors.primary, marginBottom: 6, marginTop: 0 }}>Wins & Reflections:</p>
-              <AutoTextarea value={journal.wins} onChange={e => updateJournal(dateKey, { wins: e.target.value })} placeholder={prompt.wins} style={textareaBase} />
+              <AutoTextarea aria-label="Wins and reflections" value={journal.wins} onChange={(e) => handleJournalUpdate(dateKey, { wins: e.target.value })} placeholder={prompt.wins} style={textareaBase} />
             </div>
             <div style={{ flex: 1, marginTop: isDesktop ? 0 : 8 }}>
               <p style={{ ...font.label, fontSize: font.size(20), color: colors.primary, marginBottom: 6, marginTop: 0 }}>Challenges:</p>
-              <AutoTextarea value={journal.challenges} onChange={e => updateJournal(dateKey, { challenges: e.target.value })} placeholder={prompt.challenges} style={textareaBase} />
+              <AutoTextarea aria-label="Challenges" value={journal.challenges} onChange={(e) => handleJournalUpdate(dateKey, { challenges: e.target.value })} placeholder={prompt.challenges} style={textareaBase} />
             </div>
           </div>
         </div>

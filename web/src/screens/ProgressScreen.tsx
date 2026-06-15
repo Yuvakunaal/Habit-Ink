@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { CompletionRing } from "@/components/CompletionRing";
 import { MonthHeatmap } from "@/components/MonthHeatmap";
 import { WeeklyChart } from "@/components/WeeklyChart";
@@ -48,9 +49,7 @@ function HabitBreakdownRow({ habit, streak, longestStreak, done30, sched30, pct3
   const barColor = displayPct >= 80 ? colors.success : displayPct >= 50 ? habit.color : colors.accent;
 
   return (
-    <div
-      style={{ display: "flex", flexDirection: "row", border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 10, backgroundColor: colors.card }}
-    >
+    <div style={{ display: "flex", flexDirection: "row", border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden", marginBottom: 10, backgroundColor: colors.card }}>
       <div style={{ width: 4, backgroundColor: habit.color, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 12, paddingRight: 12, paddingLeft: 12, marginBottom: 10 }}>
@@ -93,101 +92,190 @@ function HabitBreakdownRow({ habit, streak, longestStreak, done30, sched30, pct3
   );
 }
 
+function RefreshButton() {
+  const colors = useColors();
+  const { refetchAll } = useHabits();
+  const [spinning, setSpinning] = useState(false);
+
+  const handleRefresh = () => {
+    setSpinning(true);
+    refetchAll();
+    setTimeout(() => setSpinning(false), 800);
+  };
+
+  return (
+    <button
+      onClick={handleRefresh}
+      title="Refresh progress"
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 30, height: 30, borderRadius: 8,
+        backgroundColor: colors.primary + "12",
+        border: `1px solid ${colors.primary}25`,
+        cursor: "pointer", flexShrink: 0,
+        animation: spinning ? "spin 0.4s linear" : undefined,
+      }}
+    >
+      <RefreshCw size={14} color={colors.primary} />
+    </button>
+  );
+}
+
 export default function ProgressScreen() {
   const colors = useColors();
   const font = useFont();
   const { habits, entries, getCompletionForDate } = useHabits();
   const isWide = useIsWide();
 
-  const today = toDateKey(new Date());
-  const { done: todayDone, total: todayTotal } = getCompletionForDate(today);
+  // All stat computation is memoized — only re-runs when habits or entries change
+  const stats = useMemo(() => {
+    const today = toDateKey(new Date());
+    const { done: todayDone, total: todayTotal } = getCompletionForDate(today);
 
-  let globalStreak = 0;
-  for (let i = 0; i < 60; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const { done, total } = getCompletionForDate(toDateKey(d));
-    if (total === 0) continue;
-    if (done > 0) globalStreak++;
-    else break;
-  }
+    let globalStreak = 0;
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const { done, total } = getCompletionForDate(toDateKey(d));
+      if (total === 0) continue;
+      if (done > 0) globalStreak++;
+      else break;
+    }
 
-  let totalScheduled = 0;
-  let totalDone = 0;
-  for (let i = 0; i < 30; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const { done, total } = getCompletionForDate(toDateKey(d));
-    totalScheduled += total;
-    totalDone += done;
-  }
-  const rate30 = totalScheduled === 0 ? 0 : Math.round((totalDone / totalScheduled) * 100);
-
-  // Month-over-month comparison
-  const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-  let thisDone = 0, thisSched = 0, lastDone = 0, lastSched = 0;
-  for (let i = 0; i < 62; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = toDateKey(d);
-    const { done, total } = getCompletionForDate(key);
-    if (d >= thisMonthStart && d <= now) { thisDone += done; thisSched += total; }
-    else if (d >= lastMonthStart && d <= lastMonthEnd) { lastDone += done; lastSched += total; }
-  }
-  const thisRate = thisSched === 0 ? null : Math.round((thisDone / thisSched) * 100);
-  const lastRate = lastSched === 0 ? null : Math.round((lastDone / lastSched) * 100);
-  const momDiff = thisRate !== null && lastRate !== null ? thisRate - lastRate : null;
-
-  // All-time lifetime stats
-  let bestStreakEver = 0;
-  let curStreakRun = 0;
-  let perfectDays = 0;
-  let allTimeDoneTotal = 0;
-  let allTimeSchedTotal = 0;
-  for (let i = 0; i < 730; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const key = toDateKey(d);
-    const { done, total } = getCompletionForDate(key);
-    if (total === 0) continue;
-    allTimeDoneTotal += done; allTimeSchedTotal += total;
-    if (done > 0) { curStreakRun++; if (curStreakRun > bestStreakEver) bestStreakEver = curStreakRun; }
-    else curStreakRun = 0;
-    if (done >= total) perfectDays++;
-  }
-  const allTimeRate = allTimeSchedTotal === 0 ? null : Math.round((allTimeDoneTotal / allTimeSchedTotal) * 100);
-  const totalCheckIns = Object.values(entries).flat().filter(e => e.status === "done").length;
-
-  const habitStats = habits.map((habit) => {
-    let streak = 0;
-    let longestStreak = 0;
-    let currentRun = 0;
-    let done30 = 0;
-    let sched30 = 0;
-
+    let totalScheduled = 0;
+    let totalDone = 0;
     for (let i = 0; i < 30; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const { done, total } = getCompletionForDate(toDateKey(d));
+      totalScheduled += total;
+      totalDone += done;
+    }
+    const rate30 = totalScheduled === 0 ? 0 : Math.round((totalDone / totalScheduled) * 100);
+
+    // Month-over-month comparison
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    let thisDone = 0, thisSched = 0, lastDone = 0, lastSched = 0;
+    for (let i = 0; i < 62; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
       const key = toDateKey(d);
-      if (!isScheduledForDate(habit, key)) continue;
-      sched30++;
-      const entry = (entries[key] ?? []).find((e) => e.habitId === habit.id);
-      const isDone = entry?.status === "done";
-      if (isDone) done30++;
-      if (isDone) {
-        currentRun++;
-        if (i === 0 || currentRun > 1) streak = currentRun;
+      const { done, total } = getCompletionForDate(key);
+      if (d >= thisMonthStart && d <= now) { thisDone += done; thisSched += total; }
+      else if (d >= lastMonthStart && d <= lastMonthEnd) { lastDone += done; lastSched += total; }
+    }
+    const thisRate = thisSched === 0 ? null : Math.round((thisDone / thisSched) * 100);
+    const lastRate = lastSched === 0 ? null : Math.round((lastDone / lastSched) * 100);
+    const momDiff = thisRate !== null && lastRate !== null ? thisRate - lastRate : null;
+
+    // All-time lifetime stats
+    let bestStreakEver = 0;
+    let curStreakRun = 0;
+    let perfectDays = 0;
+    let allTimeDoneTotal = 0;
+    let allTimeSchedTotal = 0;
+    for (let i = 0; i < 730; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = toDateKey(d);
+      const { done, total } = getCompletionForDate(key);
+      if (total === 0) continue;
+      allTimeDoneTotal += done; allTimeSchedTotal += total;
+      if (done > 0) { curStreakRun++; if (curStreakRun > bestStreakEver) bestStreakEver = curStreakRun; }
+      else curStreakRun = 0;
+      if (done >= total) perfectDays++;
+    }
+    const allTimeRate = allTimeSchedTotal === 0 ? null : Math.round((allTimeDoneTotal / allTimeSchedTotal) * 100);
+    const totalCheckIns = Object.values(entries).flat().filter((e) => e.status === "done").length;
+
+    const habitStats = habits.map((habit) => {
+      let streak = 0;
+      let longestStreak = 0;
+      let currentRun = 0;
+      let done30 = 0;
+      let sched30 = 0;
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const key = toDateKey(d);
+        if (!isScheduledForDate(habit, key)) continue;
+        sched30++;
+        const entry = (entries[key] ?? []).find((e) => e.habitId === habit.id);
+        const isDone = entry?.status === "done";
+        if (isDone) done30++;
+        if (isDone) {
+          currentRun++;
+          if (i === 0 || currentRun > 1) streak = currentRun;
+        } else {
+          if (currentRun > longestStreak) longestStreak = currentRun;
+          currentRun = 0;
+        }
+      }
+      longestStreak = Math.max(longestStreak, currentRun);
+      const pct30 = sched30 === 0 ? 0 : Math.round((done30 / sched30) * 100);
+      return { habit, streak, longestStreak, done30, sched30, pct30 };
+    });
+
+    // Day-of-week analysis
+    const DOW_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const dowData = Array.from({ length: 7 }, () => ({ done: 0, total: 0 }));
+    for (let i = 0; i < 60; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = toDateKey(d);
+      const dow = d.getDay();
+      const { done, total } = getCompletionForDate(key);
+      if (total > 0) { dowData[dow].done += done; dowData[dow].total += total; }
+    }
+    const dowRates = dowData.map((s, i) => ({
+      dow: i, rate: s.total === 0 ? -1 : Math.round((s.done / s.total) * 100),
+    }));
+    const bestDow = [...dowRates].filter((d) => d.rate >= 0).sort((a, b) => b.rate - a.rate)[0];
+
+    let thisWeekDone = 0, thisWeekSched = 0, lastWeekDone = 0, lastWeekSched = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const { done, total } = getCompletionForDate(toDateKey(d));
+      thisWeekDone += done; thisWeekSched += total;
+    }
+    for (let i = 7; i < 14; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const { done, total } = getCompletionForDate(toDateKey(d));
+      lastWeekDone += done; lastWeekSched += total;
+    }
+    const thisWeekRate = thisWeekSched === 0 ? null : Math.round((thisWeekDone / thisWeekSched) * 100);
+    const lastWeekRate = lastWeekSched === 0 ? null : Math.round((lastWeekDone / lastWeekSched) * 100);
+
+    const topHabitRow = [...habitStats].sort((a, b) => b.pct30 - a.pct30)[0];
+    const insights: string[] = [];
+    if (bestDow && bestDow.rate > 0) {
+      insights.push(`You're most consistent on ${DOW_NAMES[bestDow.dow]}s — ${bestDow.rate}% completion average`);
+    }
+    if (topHabitRow && topHabitRow.pct30 > 0) {
+      const streakText = topHabitRow.streak > 0 ? ` · ${topHabitRow.streak}-day streak` : "";
+      insights.push(`${topHabitRow.habit.emoji} ${topHabitRow.habit.name} is your #1 habit (${topHabitRow.pct30}% rate${streakText})`);
+    }
+    if (totalCheckIns > 0) {
+      insights.push(`You've logged ${totalCheckIns} total check-in${totalCheckIns !== 1 ? "s" : ""} — every one counts`);
+    }
+    if (thisWeekRate !== null && lastWeekRate !== null) {
+      const weekDiff = thisWeekRate - lastWeekRate;
+      if (weekDiff >= 0) {
+        insights.push(`This week (${thisWeekRate}%) is tracking ahead of last week (${lastWeekRate}%) ↑`);
       } else {
-        if (currentRun > longestStreak) longestStreak = currentRun;
-        currentRun = 0;
+        insights.push(`Last week was ${lastWeekRate}% — this week at ${thisWeekRate}% so far, keep going`);
       }
     }
-    longestStreak = Math.max(longestStreak, currentRun);
-    const pct30 = sched30 === 0 ? 0 : Math.round((done30 / sched30) * 100);
-    return { habit, streak, longestStreak, done30, sched30, pct30 };
-  });
+
+    return {
+      todayDone, todayTotal, globalStreak, rate30, momDiff,
+      allTimeRate, totalCheckIns, bestStreakEver, perfectDays,
+      habitStats, insights,
+    };
+  }, [habits, entries, getCompletionForDate]);
+
+  const {
+    todayDone, todayTotal, globalStreak, rate30, momDiff,
+    allTimeRate, totalCheckIns, bestStreakEver, perfectDays,
+    habitStats, insights,
+  } = stats;
 
   const habitBreakdown = (
     <>
@@ -198,70 +286,6 @@ export default function ProgressScreen() {
         <HabitBreakdownRow key={row.habit.id} {...row} />
       ))}
     </>
-  );
-
-  // Auto-generated insights (desktop only)
-  const DOW_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-  const dowStats = Array.from({ length: 7 }, () => ({ done: 0, total: 0 }));
-  for (let i = 0; i < 60; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const key = toDateKey(d);
-    const dow = d.getDay();
-    const { done, total } = getCompletionForDate(key);
-    if (total > 0) { dowStats[dow].done += done; dowStats[dow].total += total; }
-  }
-  const dowRates = dowStats.map((s, i) => ({ dow: i, rate: s.total === 0 ? -1 : Math.round((s.done / s.total) * 100) }));
-  const bestDow = [...dowRates].filter(d => d.rate >= 0).sort((a, b) => b.rate - a.rate)[0];
-
-  const totalAllTimeCheckIns = Object.values(entries).flat().filter(e => e.status === "done").length;
-
-  let thisWeekDone = 0, thisWeekSched = 0, lastWeekDone = 0, lastWeekSched = 0;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const { done, total } = getCompletionForDate(toDateKey(d));
-    thisWeekDone += done; thisWeekSched += total;
-  }
-  for (let i = 7; i < 14; i++) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const { done, total } = getCompletionForDate(toDateKey(d));
-    lastWeekDone += done; lastWeekSched += total;
-  }
-  const thisWeekRate = thisWeekSched === 0 ? null : Math.round((thisWeekDone / thisWeekSched) * 100);
-  const lastWeekRate = lastWeekSched === 0 ? null : Math.round((lastWeekDone / lastWeekSched) * 100);
-
-  const topHabitRow = [...habitStats].sort((a, b) => b.pct30 - a.pct30)[0];
-  const insights: string[] = [];
-  if (bestDow && bestDow.rate > 0) {
-    insights.push(`You're most consistent on ${DOW_NAMES[bestDow.dow]}s — ${bestDow.rate}% completion average`);
-  }
-  if (topHabitRow && topHabitRow.pct30 > 0) {
-    const streakText = topHabitRow.streak > 0 ? ` · ${topHabitRow.streak}-day streak` : "";
-    insights.push(`${topHabitRow.habit.emoji} ${topHabitRow.habit.name} is your #1 habit (${topHabitRow.pct30}% rate${streakText})`);
-  }
-  if (totalAllTimeCheckIns > 0) {
-    insights.push(`You've logged ${totalAllTimeCheckIns} total check-in${totalAllTimeCheckIns !== 1 ? "s" : ""} — every one counts`);
-  }
-  if (thisWeekRate !== null && lastWeekRate !== null) {
-    const weekDiff = thisWeekRate - lastWeekRate;
-    if (weekDiff >= 0) {
-      insights.push(`This week (${thisWeekRate}%) is tracking ahead of last week (${lastWeekRate}%) ↑`);
-    } else {
-      insights.push(`Last week was ${lastWeekRate}% — this week at ${thisWeekRate}% so far, keep going`);
-    }
-  }
-
-  const allTimeStatsRow = (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: isWide ? "repeat(4, 1fr)" : "repeat(2, 1fr)",
-      gap: 8,
-      marginBottom: 16,
-    }}>
-      <StatCard label="Total Check-ins" value={totalCheckIns} color={colors.success} icon="✅" />
-      <StatCard label="Best Streak" value={`${bestStreakEver}d`} color={colors.primary} icon="🔥" />
-      <StatCard label="Perfect Days" value={perfectDays} color="#F4C430" icon="⭐" />
-      <StatCard label="All-time Rate" value={allTimeRate !== null ? `${allTimeRate}%` : "—"} icon="📈" />
-    </div>
   );
 
   const insightsSection = insights.length > 0 ? (
@@ -281,8 +305,9 @@ export default function ProgressScreen() {
   if (habits.length === 0) {
     return (
       <div className="page-enter" style={{ flex: 1, backgroundColor: colors.background, display: "flex", flexDirection: "column", height: "100%" }}>
-        <div style={{ paddingLeft: isWide ? 28 : 16, paddingRight: isWide ? 28 : 16, paddingTop: 18, paddingBottom: 14, borderBottom: `1px solid ${colors.line}`, flexShrink: 0 }}>
+        <div style={{ paddingLeft: isWide ? 28 : 16, paddingRight: isWide ? 28 : 16, paddingTop: 18, paddingBottom: 14, borderBottom: `1px solid ${colors.line}`, flexShrink: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
           <span style={{ ...font.heading, fontSize: font.size(28), color: colors.primary }}>Progress</span>
+          <RefreshButton />
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
           <span style={{ fontSize: 48, marginBottom: 12 }}>📊</span>
@@ -295,21 +320,25 @@ export default function ProgressScreen() {
     );
   }
 
+  const allTimeStatsRow = (
+    <div style={{ display: "grid", gridTemplateColumns: isWide ? "repeat(4, 1fr)" : "repeat(2, 1fr)", gap: 8, marginBottom: 16 }}>
+      <StatCard label="Total Check-ins" value={totalCheckIns} color={colors.success} icon="✅" />
+      <StatCard label="Best Streak" value={`${bestStreakEver}d`} color={colors.primary} icon="🔥" />
+      <StatCard label="Perfect Days" value={perfectDays} color="#F4C430" icon="⭐" />
+      <StatCard label="All-time Rate" value={allTimeRate !== null ? `${allTimeRate}%` : "—"} icon="📈" />
+    </div>
+  );
+
   if (isWide) {
     return (
       <div className="page-enter" style={{ flex: 1, backgroundColor: colors.background, display: "flex", flexDirection: "column", height: "100%" }}>
-        {/* Header */}
-        <div style={{ paddingLeft: 28, paddingRight: 28, paddingTop: 18, paddingBottom: 14, borderBottom: `1px solid ${colors.line}`, flexShrink: 0 }}>
+        <div style={{ paddingLeft: 28, paddingRight: 28, paddingTop: 18, paddingBottom: 14, borderBottom: `1px solid ${colors.line}`, flexShrink: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
           <span style={{ ...font.heading, fontSize: font.size(28), color: colors.primary }}>Progress</span>
+          <RefreshButton />
         </div>
-
         <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 28px 40px" }}>
-
-            {/* Top 2-column row */}
             <div style={{ display: "flex", flexDirection: "row", gap: 16, marginBottom: 16 }}>
-
-              {/* Left col: Ring + Stat cards */}
               <div style={{ flex: "0 0 42%", display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", backgroundColor: colors.card, flex: 1 }}>
                   <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, marginBottom: 16, textTransform: "uppercase" as const }}>
@@ -328,31 +357,23 @@ export default function ProgressScreen() {
                     </div>
                   </div>
                 </div>
-
                 <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
                   <StatCard label="Today Done" value={`${todayDone}/${todayTotal}`} color={colors.success} icon="✅" />
                   <StatCard label="30-Day Rate" value={`${rate30}%`} icon="📈" trend={momDiff !== null ? { diff: momDiff } : undefined} />
                   <StatCard label="Total Habits" value={habits.length} icon="📝" />
                 </div>
               </div>
-
-              {/* Right col: Weekly chart + 15-Week Activity */}
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 20, backgroundColor: colors.card }}>
-                  <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 16, textTransform: "uppercase" as const }}>
-                    Last 7 Days
-                  </span>
+                  <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 16, textTransform: "uppercase" as const }}>Last 7 Days</span>
                   <WeeklyChart />
                 </div>
                 <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 20, backgroundColor: colors.card, flex: 1 }}>
-                  <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 16, textTransform: "uppercase" as const }}>
-                    15-Week Activity
-                  </span>
+                  <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 16, textTransform: "uppercase" as const }}>15-Week Activity</span>
                   <MonthHeatmap />
                 </div>
               </div>
             </div>
-
             {allTimeStatsRow}
             {habitBreakdown}
             {insightsSection}
@@ -362,15 +383,13 @@ export default function ProgressScreen() {
     );
   }
 
-  // Mobile layout (unchanged)
   return (
     <div className="page-enter" style={{ flex: 1, backgroundColor: colors.background, display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Header */}
-      <div style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 12, flexShrink: 0 }}>
-        <span style={{ ...font.heading, fontSize: font.size(28), color: colors.primary, display: "block", textAlign: "center" }}>Progress</span>
+      <div style={{ paddingLeft: 16, paddingRight: 16, paddingTop: 16, paddingBottom: 12, flexShrink: 0, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 }}>
+        <span style={{ ...font.heading, fontSize: font.size(28), color: colors.primary }}>Progress</span>
+        <RefreshButton />
       </div>
       <div style={{ height: 1, backgroundColor: colors.line }} />
-
       <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "14px 14px 32px" }}>
         <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 12, backgroundColor: colors.card }}>
           <span style={{ ...font.label, fontSize: font.size(12), color: colors.mutedForeground, letterSpacing: 1, marginBottom: 14 }}>TODAY'S COMPLETION</span>
@@ -387,18 +406,15 @@ export default function ProgressScreen() {
             </div>
           </div>
         </div>
-
         <div style={{ display: "flex", flexDirection: "row", gap: 8, marginBottom: 12 }}>
           <StatCard label="Today Done" value={`${todayDone}/${todayTotal}`} color={colors.success} icon="✅" />
           <StatCard label="30-Day Rate" value={`${rate30}%`} icon="📈" trend={momDiff !== null ? { diff: momDiff } : undefined} />
           <StatCard label="Total Habits" value={habits.length} icon="📝" />
         </div>
-
         <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 16, marginBottom: 12, backgroundColor: colors.card }}>
           <span style={{ ...font.label, fontSize: font.size(12), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 14 }}>LAST 7 DAYS</span>
           <WeeklyChart />
         </div>
-
         <div style={{ border: `1px solid ${colors.border}`, borderRadius: 14, padding: 16, marginBottom: 12, backgroundColor: colors.card, overflow: "hidden" }}>
           <span style={{ ...font.label, fontSize: font.size(12), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 14 }}>15-WEEK ACTIVITY</span>
           <div style={{ overflowX: "auto", margin: "0 -16px", padding: "0 16px" }}>
@@ -407,12 +423,10 @@ export default function ProgressScreen() {
             </div>
           </div>
         </div>
-
         <span style={{ ...font.label, fontSize: font.size(11), color: colors.mutedForeground, letterSpacing: 1, display: "block", marginBottom: 8, textTransform: "uppercase" as const }}>
           All-Time Stats
         </span>
         {allTimeStatsRow}
-
         {habitBreakdown}
         {insightsSection}
       </div>

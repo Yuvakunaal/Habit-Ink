@@ -51,16 +51,22 @@ export function mapProfileFromDB(row: ProfileRow): MappedProfile {
   };
 }
 
+// ── Runtime type guards (prevents silent corruption on unexpected DB values) ──
+
+const VALID_HABIT_TYPES = new Set<string>(["yesno", "number", "decimal", "time", "custom"]);
+const VALID_SCHEDULE_TYPES = new Set<string>(["daily", "weekdays", "weekends", "alternate", "custom"]);
+const VALID_ENTRY_STATUSES = new Set<string>(["pending", "done", "missed"]);
+
 // ── Habits ────────────────────────────────────────────────────────────────────
 
 export function mapHabitFromDB(row: HabitRow): Habit {
   return {
     id: row.id,
     name: row.name,
-    type: row.type as HabitType,
+    type: (VALID_HABIT_TYPES.has(row.type) ? row.type : "yesno") as HabitType,
     target: row.target,
-    schedule: row.schedule as ScheduleType,
-    customDays: row.custom_days ?? undefined,
+    schedule: (VALID_SCHEDULE_TYPES.has(row.schedule) ? row.schedule : "daily") as ScheduleType,
+    customDays: row.custom_days?.filter((d: number) => d >= 0 && d <= 6) ?? undefined,
     startDate: row.start_date,
     emoji: row.emoji,
     color: row.color,
@@ -93,7 +99,7 @@ export function mapEntryFromDB(row: EntryRow): HabitEntry {
   return {
     habitId: row.habit_id,
     date: row.date,
-    status: row.status as EntryStatus,
+    status: (VALID_ENTRY_STATUSES.has(row.status) ? row.status : "pending") as EntryStatus,
     actual: row.actual,
   };
 }

@@ -6,7 +6,9 @@ import { SettingsProvider } from "@/context/SettingsContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { AuthGate } from "@/components/AuthGate";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TabBar, Sidebar } from "@/components/TabBar";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { useColors } from "@/hooks/useColors";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 
@@ -53,18 +55,21 @@ function AppLayout() {
   if (isDesktop) {
     return (
       <div style={{ display: "flex", flexDirection: "row", height: "100%", backgroundColor: colors.background }}>
+        <OfflineBanner />
         <Sidebar />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <Routes>
-            <Route path="/" element={<TodayScreen />} />
-            <Route path="/habits" element={<HabitsScreen />} />
-            <Route path="/calendar" element={<CalendarScreen />} />
-            <Route path="/progress" element={<ProgressScreen />} />
-            <Route path="/journal" element={<JournalScreen />} />
-            <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="/settings" element={<SettingsScreen />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <ErrorBoundary compact>
+            <Routes>
+              <Route path="/" element={<TodayScreen />} />
+              <Route path="/habits" element={<HabitsScreen />} />
+              <Route path="/calendar" element={<CalendarScreen />} />
+              <Route path="/progress" element={<ProgressScreen />} />
+              <Route path="/journal" element={<JournalScreen />} />
+              <Route path="/profile" element={<ProfileScreen />} />
+              <Route path="/settings" element={<SettingsScreen />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </div>
       </div>
     );
@@ -72,16 +77,19 @@ function AppLayout() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: colors.background }}>
+      <OfflineBanner />
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <Routes>
-          <Route path="/" element={<TodayScreen />} />
-          <Route path="/habits" element={<HabitsScreen />} />
-          <Route path="/calendar" element={<CalendarScreen />} />
-          <Route path="/progress" element={<ProgressScreen />} />
-          <Route path="/journal" element={<JournalScreen />} />
-          <Route path="/profile" element={<ProfileScreen />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <ErrorBoundary compact>
+          <Routes>
+            <Route path="/" element={<TodayScreen />} />
+            <Route path="/habits" element={<HabitsScreen />} />
+            <Route path="/calendar" element={<CalendarScreen />} />
+            <Route path="/progress" element={<ProgressScreen />} />
+            <Route path="/journal" element={<JournalScreen />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </div>
       <TabBar />
     </div>

@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { Database } from "@/lib/db/types";
 import { mapHabitToDB } from "@/lib/db/mappers";
 import type { Habit, HabitEntry, DailyJournal } from "@/context/HabitContext";
+import { logError } from "@/lib/logger";
 
 type HabitInsert = Database["public"]["Tables"]["habits"]["Insert"];
 type EntryInsert = Database["public"]["Tables"]["habit_entries"]["Insert"];
@@ -52,22 +53,23 @@ export async function migrateLocalStorageToSupabase(
     return false;
   }
 
-  const entriesRaw = localStorage.getItem(LS.entries);
-  const journalsRaw = localStorage.getItem(LS.journals);
-  const settingsRaw = localStorage.getItem(LS.settings);
-  const appStart = localStorage.getItem(LS.appStart);
-  const habitOrderRaw = localStorage.getItem(LS.habitOrder);
-  const sidebarCollapsed = localStorage.getItem(LS.sidebarCollapsed);
-
-  const entriesMap: Record<string, HabitEntry[]> = entriesRaw
-    ? JSON.parse(entriesRaw)
-    : {};
-  const journalsMap: Record<string, DailyJournal> = journalsRaw
-    ? JSON.parse(journalsRaw)
-    : {};
-  const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
-
   try {
+    // All JSON.parse is inside the try block — malformed localStorage won't escape
+    const entriesRaw = localStorage.getItem(LS.entries);
+    const journalsRaw = localStorage.getItem(LS.journals);
+    const settingsRaw = localStorage.getItem(LS.settings);
+    const appStart = localStorage.getItem(LS.appStart);
+    const habitOrderRaw = localStorage.getItem(LS.habitOrder);
+    const sidebarCollapsed = localStorage.getItem(LS.sidebarCollapsed);
+
+    const entriesMap: Record<string, HabitEntry[]> = entriesRaw
+      ? JSON.parse(entriesRaw)
+      : {};
+    const journalsMap: Record<string, DailyJournal> = journalsRaw
+      ? JSON.parse(journalsRaw)
+      : {};
+    const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+
     // 1. Habits — preserve original UUIDs so entries foreign keys still match
     if (habits.length > 0) {
       const habitRows: HabitInsert[] = habits.map((h) => ({
@@ -138,10 +140,10 @@ export async function migrateLocalStorageToSupabase(
     if (profileError) throw profileError;
 
     clearLegacyStorage();
-    console.info("[Habit Ink] Migrated local data to Supabase ✓");
+    // intentional info log — one-time migration success is worth surfacing in all environments
     return true;
   } catch (err) {
-    console.error("[Habit Ink] Migration failed — local data preserved:", err);
+    logError("Migration failed — local data preserved", err);
     return false;
   }
 }
