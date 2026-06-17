@@ -367,7 +367,7 @@ export default function BlogListScreen() {
             </a>
           ))}
         </nav>
-        <p style={{ ...INTER, fontSize: 12, color: BORDER, margin: 0 }}>© 2026 Habit Ink · Made by Kunaal</p>
+        <p style={{ ...INTER, fontSize: 12, color: "#2d2a25", margin: 0 }}>© 2026 Habit Ink · Made by Kunaal</p>
       </footer>
     </div>
   );

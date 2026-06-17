@@ -1311,7 +1311,7 @@ function DarkClose({ onOpenModal }: { onOpenModal: () => void }) {
           </a>
         ))}
       </nav>
-      <p style={{ ...INTER, fontSize: 11, color: "rgba(250,248,243,0.20)", margin: 0 }}>
+      <p style={{ ...INTER, fontSize: 11, color: "rgba(250,248,243,0.55)", margin: 0 }}>
         © 2026 Habit Ink · Made by Kunaal
       </p>
     </footer>
