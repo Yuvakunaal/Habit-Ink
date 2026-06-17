@@ -2062,16 +2062,6 @@ export default function GroupDetailScreen() {
                             color: r.myReaction ? colors.primary : colors.mutedForeground,
                           }}>{r.emoji} {r.count}</button>
                         ))}
-                        <button onClick={async () => {
-                          const rxns = await supabase.from('group_message_reactions').select('user_id, emoji').eq('message_id', m.id);
-                          const uids = [...new Set((rxns.data ?? []).map((r: { user_id: string }) => r.user_id))];
-                          if (uids.length === 0) return;
-                          const profiles = await supabase.from('profiles').select('id, user_name').in('id', uids);
-                          const names = (profiles.data ?? []).map((p: { user_name?: string }) => p.user_name || 'Member').join(', ');
-                          showToast(`Reacted: ${names}`, 'info');
-                        }} style={{ background: 'none', border: 'none', cursor: 'pointer', ...font.body, fontSize: 10, color: colors.mutedForeground, padding: '0 2px', marginLeft: 2 }}>
-                          👁
-                        </button>
                       </div>
                     )}
 
@@ -2757,7 +2747,7 @@ export default function GroupDetailScreen() {
                         </div>
                       )}
                       {nudgedMemberIds.has(m.userId) && (
-                        <div style={{ position: 'absolute', top: -2, right: -2, backgroundColor: '#fff', borderRadius: 8, width: 16, height: 16, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${colors.border}` }}>
+                        <div style={{ position: 'absolute', top: -3, right: -3, backgroundColor: '#fff', borderRadius: '50%', width: 18, height: 18, border: `1.5px solid ${colors.border}`, fontSize: 9, lineHeight: '16px', textAlign: 'center', userSelect: 'none' }}>
                           💪
                         </div>
                       )}
@@ -2816,18 +2806,6 @@ export default function GroupDetailScreen() {
                   style={{ ...font.body, fontSize: 12, padding: '4px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${colors.border}`, backgroundColor: 'transparent', color: colors.mutedForeground }}>
                   +
                 </button>
-                {entry.reactions.some(r => r.count > 0) && (
-                  <button onClick={async () => {
-                    const rxns = await supabase.from('group_reactions').select('from_user_id').eq('entry_id', entry.entryId);
-                    const uids = [...new Set((rxns.data ?? []).map((r: { from_user_id: string }) => r.from_user_id))];
-                    if (uids.length === 0) return;
-                    const profiles = await supabase.from('profiles').select('id, user_name').in('id', uids);
-                    const names = (profiles.data ?? []).map((p: { user_name?: string }) => p.user_name || 'Member').join(', ');
-                    showToast(`Reacted: ${names}`, 'info');
-                  }} style={{ background: 'none', border: 'none', cursor: 'pointer', ...font.body, fontSize: 10, color: colors.mutedForeground, padding: '0 2px' }}>
-                    👁
-                  </button>
-                )}
                 {feedReactionPickerFor === entry.entryId && (
                   <div style={{ position: 'absolute', bottom: 32, left: 0, zIndex: 10, display: 'flex', gap: 4, backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
                     {FEED_REACTION_EMOJIS.map(emoji => (
