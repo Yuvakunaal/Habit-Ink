@@ -69,31 +69,6 @@ function MonthDivider({ label, isFirst }: { label: string; isFirst: boolean }) {
   );
 }
 
-// ── Empty day — ultra-compact marker ────────────────────────────────────────
-function EmptyDay({ dateKey, dayNumber }: { dateKey: string; dayNumber: number }) {
-  const colors = useColors();
-  const font = useFont();
-  return (
-    <div style={{ display: "flex", flexDirection: "row", minHeight: 26 }}>
-      <div style={{ width: SPINE_W, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div style={{
-          width: 7, height: 7, borderRadius: 4, flexShrink: 0,
-          border: `1.5px solid ${colors.border}`,
-          backgroundColor: colors.background,
-          marginTop: 4, zIndex: 2,
-        }} />
-        <div style={{ width: 2, flex: 1, backgroundColor: colors.border }} />
-      </div>
-      <div style={{ flex: 1, paddingLeft: 12, paddingBottom: 2, paddingTop: 2, display: "flex", flexDirection: "row", alignItems: "center", gap: 7 }}>
-        <span style={{ ...font.label, fontSize: font.size(11), color: colors.border, minWidth: 26 }}>{fmtDOW(dateKey)}</span>
-        <span style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, opacity: 0.45 }}>{fmtDate(dateKey)}</span>
-        <span style={{ ...font.body, fontSize: font.size(10), color: colors.border }}>·</span>
-        <span style={{ ...font.body, fontSize: font.size(10), color: colors.border, opacity: 0.5 }}>Day {dayNumber}</span>
-      </div>
-    </div>
-  );
-}
-
 // ── Journal entry card ───────────────────────────────────────────────────────
 function EntryCard({
   dateKey, dayNumber, isToday,
@@ -387,20 +362,9 @@ export default function JournalScreen() {
 
                   {group.days.map((dateKey) => {
                     const isToday = dateKey === todayKey;
-                    const hasContent = !!(journals[dateKey] && (
-                      journals[dateKey].intention || journals[dateKey].notes ||
-                      journals[dateKey].wins || journals[dateKey].challenges ||
-                      journals[dateKey].wakeUpTime
-                    ));
                     const dayNum = getDayNumber(new Date(dateKey + "T12:00:00"));
-
-                    if (isToday || hasContent) {
-                      return (
-                        <EntryCard key={dateKey} dateKey={dateKey} dayNumber={dayNum} isToday={isToday} />
-                      );
-                    }
                     return (
-                      <EmptyDay key={dateKey} dateKey={dateKey} dayNumber={dayNum} />
+                      <EntryCard key={dateKey} dateKey={dateKey} dayNumber={dayNum} isToday={isToday} />
                     );
                   })}
                 </React.Fragment>

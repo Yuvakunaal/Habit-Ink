@@ -33,6 +33,8 @@ const MAX_CHALLENGES_PER_GROUP = 15;
 const MAX_GROUPS_CREATED_PER_USER = 10;
 // Matches the `group_messages_content_length` DB check constraint — keep both in sync.
 export const MAX_MESSAGE_LENGTH = 2000;
+// Sliding-window cap: oldest message is auto-deleted from DB when the 101st arrives.
+export const MAX_CHAT_MESSAGES = 100;
 
 function generateInviteCode(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
@@ -965,6 +967,30 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
 
   // ── Chat ────────────────────────────────────────────────────────────────────
 
+  const trimChatMessages = async (groupId: string): Promise<void> => {
+    const { count } = await supabase
+      .from('group_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('group_id', groupId);
+
+    const excess = (count ?? 0) - MAX_CHAT_MESSAGES;
+    if (excess <= 0) return;
+
+    const { data: oldest } = await supabase
+      .from('group_messages')
+      .select('id')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: true })
+      .limit(excess);
+
+    if (oldest && oldest.length > 0) {
+      await supabase
+        .from('group_messages')
+        .delete()
+        .in('id', oldest.map((m: { id: string }) => m.id));
+    }
+  };
+
   const sendMessage = async (groupId: string, content: string): Promise<void> => {
     // Defensive cap to match the textarea's maxLength and the DB check constraint — guards
     // any future caller that bypasses the UI (e.g. a pasted value somehow exceeding maxLength).
@@ -973,6 +999,10 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
       group_id: groupId, user_id: user!.id, content: trimmed,
     });
     if (error) throw error;
+
+    // Sliding-window trim: keep at most MAX_CHAT_MESSAGES per group. Errors are swallowed
+    // so a trim failure never surfaces as a send error to the user.
+    await trimChatMessages(groupId).catch(() => {});
   };
 
   const deleteMessage = async (messageId: string): Promise<void> => {
