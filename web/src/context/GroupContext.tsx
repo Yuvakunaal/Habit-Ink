@@ -63,6 +63,7 @@ interface GroupContextType {
   joinGroupByCode: (code: string) => Promise<Group>;
   leaveGroup: (groupId: string) => Promise<void>;
   removeMember: (groupId: string, userId: string) => Promise<void>;
+  promoteMember: (groupId: string, userId: string) => Promise<void>;
   updateMemberSettings: (groupId: string, updates: { muted?: boolean }) => Promise<void>;
   markGroupSeen: (groupId: string) => Promise<void>;
 
@@ -108,6 +109,7 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     setLoadingGroups(true);
     try {
+      // Step 1: Fetch memberships
       const { data: memberships } = await supabase
         .from('group_members')
         .select('group_id, role, last_seen_at, muted')
@@ -122,6 +124,7 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
       const groupIds = memberships.map(m => m.group_id);
       const membershipMap = Object.fromEntries(memberships.map(m => [m.group_id, m]));
 
+      // Step 2: Fetch groups
       const { data: groupRows } = await supabase
         .from('groups')
         .select('*')
@@ -132,65 +135,104 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
       const today = new Date();
       const todayKey = toDateKey(today);
       const yesterdayKey = toDateKey(new Date(today.getTime() - 86400000));
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
-      // Fetch unread counts, member counts, challenge counts, and today's pulse for all groups
-      const enriched = await Promise.all(groupRows.map(async (gr) => {
-        const membership = membershipMap[gr.id];
+      // Step 3: Batch fetch all group-level data in ONE Promise.all (6 total queries regardless of group count)
+      const [allMembersRes, allChallengesRes, allMessagesRes] = await Promise.all([
+        supabase.from('group_members').select('group_id, user_id').in('group_id', groupIds),
+        supabase.from('group_challenges').select('group_id, id, end_date').in('group_id', groupIds),
+        supabase.from('group_messages').select('group_id, created_at').in('group_id', groupIds).gte('created_at', thirtyDaysAgo),
+      ]);
 
-        const [memberCountRes, challengeCountRes, unreadRes, pulseRes, challengeIdsRes] = await Promise.all([
-          supabase.from('group_members').select('id', { count: 'exact', head: true }).eq('group_id', gr.id),
-          supabase.from('group_challenges').select('id', { count: 'exact', head: true }).eq('group_id', gr.id),
-          membership?.muted ? Promise.resolve({ count: 0 }) :
-            supabase.from('group_messages').select('id', { count: 'exact', head: true })
-              .eq('group_id', gr.id)
-              .gt('created_at', membership?.last_seen_at ?? gr.created_at),
-          supabase.from('group_members').select('user_id').eq('group_id', gr.id),
-          supabase.from('group_challenges').select('id').eq('group_id', gr.id),
-        ]);
+      // Build maps
+      const memberIdsByGroup: Record<string, string[]> = {};
+      for (const row of (allMembersRes.data ?? []) as { group_id: string; user_id: string }[]) {
+        (memberIdsByGroup[row.group_id] ??= []).push(row.user_id);
+      }
 
-        const memberIds = (pulseRes.data ?? []).map((m: { user_id: string }) => m.user_id);
-        const groupChallengeIds = (challengeIdsRes.data ?? []).map((c: { id: string }) => c.id);
-        let membersToday: MemberTodayStatus[] = [];
-
-        if (memberIds.length > 0) {
-          const [profilesRes, checkinsRes] = await Promise.all([
-            supabase.from('profiles').select('id, user_name, user_emoji, avatar_url, timezone').in('id', memberIds),
-            groupChallengeIds.length > 0
-              ? supabase.from('group_challenge_checkins').select('user_id, date')
-                  .in('user_id', memberIds)
-                  .in('challenge_id', groupChallengeIds)
-                  .in('date', [todayKey, yesterdayKey])
-                  .eq('done', true)
-              : Promise.resolve({ data: [] as { user_id: string; date: string }[] }),
-          ]);
-
-          const profilesMap = Object.fromEntries((profilesRes.data ?? []).map((p: { id: string; user_name?: string; user_emoji?: string; avatar_url?: string; timezone?: string }) => [p.id, p]));
-
-          membersToday = memberIds.map((uid: string) => {
-            const profile = profilesMap[uid];
-            const memberTz = profile?.timezone || 'UTC';
-            const memberToday = toDateKeyInTimezone(memberTz);
-            const done = (checkinsRes.data ?? []).filter((e: { user_id: string; date: string }) => e.user_id === uid && e.date === memberToday);
-            return {
-              userId: uid,
-              displayName: profile?.user_name || 'Member',
-              avatarUrl: profile?.avatar_url ?? '',
-              userEmoji: profile?.user_emoji ?? '😊',
-              completedToday: done.length > 0,
-              challengesDoneToday: done.length,
-              timezone: memberTz,
-            };
-          });
+      const challengeIdsByGroup: Record<string, string[]> = {};
+      const activeChallengeCountByGroup: Record<string, number> = {};
+      for (const row of (allChallengesRes.data ?? []) as { group_id: string; id: string; end_date: string }[]) {
+        (challengeIdsByGroup[row.group_id] ??= []).push(row.id);
+        if (row.end_date >= todayKey) {
+          activeChallengeCountByGroup[row.group_id] = (activeChallengeCountByGroup[row.group_id] ?? 0) + 1;
         }
+      }
+
+      const messagesByGroup: Record<string, string[]> = {};
+      for (const row of (allMessagesRes.data ?? []) as { group_id: string; created_at: string }[]) {
+        (messagesByGroup[row.group_id] ??= []).push(row.created_at);
+      }
+
+      // Build challengeGroupMap (challengeId → groupId)
+      const challengeGroupMap: Record<string, string> = {};
+      for (const [gid, cids] of Object.entries(challengeIdsByGroup)) {
+        for (const cid of cids) challengeGroupMap[cid] = gid;
+      }
+
+      const allMemberIds = [...new Set(Object.values(memberIdsByGroup).flat())];
+      const allChallengeIds = [...new Set(Object.values(challengeIdsByGroup).flat())];
+
+      // Step 4: Batch fetch profiles + checkins
+      const [profilesRes, checkinsRes] = await Promise.all([
+        allMemberIds.length > 0
+          ? supabase.from('profiles').select('id, user_name, user_emoji, avatar_url, timezone').in('id', allMemberIds)
+          : Promise.resolve({ data: [] as { id: string; user_name?: string; user_emoji?: string; avatar_url?: string; timezone?: string }[] }),
+        allChallengeIds.length > 0
+          ? supabase.from('group_challenge_checkins').select('user_id, challenge_id, date')
+              .in('challenge_id', allChallengeIds)
+              .in('date', [todayKey, yesterdayKey])
+              .eq('done', true)
+          : Promise.resolve({ data: [] as { user_id: string; challenge_id: string; date: string }[] }),
+      ]);
+
+      const profilesMap = Object.fromEntries(
+        (profilesRes.data ?? []).map((p: { id: string; user_name?: string; user_emoji?: string; avatar_url?: string; timezone?: string }) => [p.id, p])
+      );
+
+      // Group checkins by group_id for fast lookup
+      const checkinsByGroup: Record<string, { user_id: string; date: string }[]> = {};
+      for (const row of (checkinsRes.data ?? []) as { user_id: string; challenge_id: string; date: string }[]) {
+        const gid = challengeGroupMap[row.challenge_id];
+        if (gid) (checkinsByGroup[gid] ??= []).push({ user_id: row.user_id, date: row.date });
+      }
+
+      // Step 5: Build enriched groups client-side
+      const enriched: GroupWithStats[] = groupRows.map(gr => {
+        const membership = membershipMap[gr.id];
+        const memberIds = memberIdsByGroup[gr.id] ?? [];
+
+        // Unread count
+        const unreadCount = membership?.muted
+          ? 0
+          : (messagesByGroup[gr.id] ?? []).filter(ts => ts > (membership?.last_seen_at ?? gr.created_at)).length;
+
+        // Members today
+        const groupCheckins = checkinsByGroup[gr.id] ?? [];
+        const membersToday: MemberTodayStatus[] = memberIds.map((uid: string) => {
+          const profile = profilesMap[uid];
+          const memberTz = (profile as { timezone?: string } | undefined)?.timezone || 'UTC';
+          const memberToday = toDateKeyInTimezone(memberTz);
+          const done = groupCheckins.filter(e => e.user_id === uid && e.date === memberToday);
+          return {
+            userId: uid,
+            displayName: (profile as { user_name?: string } | undefined)?.user_name || 'Member',
+            avatarUrl: (profile as { avatar_url?: string } | undefined)?.avatar_url ?? '',
+            userEmoji: (profile as { user_emoji?: string } | undefined)?.user_emoji ?? '😊',
+            completedToday: done.length > 0,
+            challengesDoneToday: done.length,
+            timezone: memberTz,
+          };
+        });
 
         return {
           ...mapGroupFromDB(gr),
-          memberCount: memberCountRes.count ?? 0,
-          activeChallengeCount: challengeCountRes.count ?? 0,
-          unreadCount: unreadRes.count ?? 0,
+          memberCount: memberIds.length,
+          activeChallengeCount: activeChallengeCountByGroup[gr.id] ?? 0,
+          unreadCount,
           membersToday,
         } as GroupWithStats;
-      }));
+      });
 
       setGroups(enriched);
       setTotalUnread(enriched.reduce((sum, g) => sum + g.unreadCount, 0));
@@ -368,6 +410,14 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
       .eq('group_id', groupId).eq('user_id', userId);
     if (error) throw error;
     await refetchGroups();
+  };
+
+  const promoteMember = async (groupId: string, userId: string): Promise<void> => {
+    const { error } = await supabase.from('group_members')
+      .update({ role: 'admin' })
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+    if (error) throw error;
   };
 
   const updateMemberSettings = async (groupId: string, updates: { muted?: boolean }): Promise<void> => {
@@ -756,12 +806,13 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
 
   const computeWeeklyDigest = async (groupId: string, groupStreakDays: number): Promise<WeeklyDigest | null> => {
     const today = new Date();
-    if (today.getDay() !== 1) return null;
-
+    // Always show the last completed week (Mon–Sun), regardless of current day
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon..6=Sat
+    const daysSinceLastMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const lastMonday = new Date(today);
-    lastMonday.setDate(today.getDate() - 7);
+    lastMonday.setDate(today.getDate() - daysSinceLastMonday - 7);
     const lastSunday = new Date(today);
-    lastSunday.setDate(today.getDate() - 1);
+    lastSunday.setDate(today.getDate() - daysSinceLastMonday - 1);
 
     const startKey = toDateKey(lastMonday);
     const endKey = toDateKey(lastSunday);
@@ -1026,7 +1077,7 @@ export function GroupProvider({ children }: { children: React.ReactNode }) {
   const value: GroupContextType = {
     groups, loadingGroups, refetchGroups,
     createGroup, updateGroupSettings, deleteGroup, regenerateInviteCode,
-    joinGroupByCode, leaveGroup, removeMember, updateMemberSettings, markGroupSeen,
+    joinGroupByCode, leaveGroup, removeMember, promoteMember, updateMemberSettings, markGroupSeen,
     fetchGroupById, fetchGroupMembers, fetchGroupChallenges, fetchFeedPage,
     fetchMessages, fetchChallengeParticipants, fetchTodaysPulse, fetchPendingNudges,
     computeGroupStreak, computeGroupTrophies, computeWeeklyDigest,

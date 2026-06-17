@@ -58,4 +58,5 @@ group_feature_plan.md
 web/.env.local
 
 # Google client secrets
-client_secret_281975303040-a1nmhqavi7e12baj8rf1u7j9pnsdqp9b.apps.googleusercontent.com.json
+client_secret_281975303040-a1nmhqavi7e12baj8rf1u7j9pnsdqp9b.apps.googleusercontent.com.json.claude/worktrees/
+client_secret_*.json

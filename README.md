@@ -11,7 +11,7 @@
     <img src="https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 6" />
     <img src="https://img.shields.io/badge/Supabase-2-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" />
     <img src="https://img.shields.io/badge/React_Router-6-CA4245?style=flat-square&logo=react-router&logoColor=white" alt="React Router" />
-    <img src="https://img.shields.io/badge/version-4.0-8b5cf6?style=flat-square" alt="Version 4.0" />
+    <img src="https://img.shields.io/badge/version-4.1-8b5cf6?style=flat-square" alt="Version 4.1" />
   </p>
 </div>
 
@@ -76,8 +76,10 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | 📝 | **SEO Blog** | Six long-form articles targeting habit-tracking keywords, with per-post schema, canonical, and OG tags |
 | 👥 | **Groups** | Create or join groups (up to 10 created per user) — invite friends via a shareable link and track habits together |
 | 🏆 | **Group Challenges** | Up to 15 concurrent challenges per group — with join/check-in, per-member streaks, completion rates, and an emoji-reactions feed |
-| 💬 | **Group Chat** | Realtime chat (up to 2,000 chars per message) with emoji reactions, own-message delete, and a full categorised emoji picker |
-| 💪 | **Nudges** | Send a motivational nudge to any group member who hasn't checked in today — they receive a live toast notification |
+| 💬 | **Group Chat** | Realtime chat (up to 2,000 chars per message, 100-message sliding window) with optimistic send, date separators, keyword search, emoji reactions with reactor details, and a full categorised emoji picker |
+| 💪 | **Nudges** | Send a motivational nudge to any group member who hasn't checked in today — they receive a live toast notification (suppressed if the group is muted) |
+| 🎉 | **Cheers** | Tap a completed member's pulse avatar to send a 🔥 reaction to their latest feed entry — positive reinforcement, one tap |
+| 🔍 | **Chat Search** | Filter the 100-message chat history by keyword inline — results narrow live, cleared automatically when leaving the Chat tab |
 
 ---
 
@@ -213,9 +215,7 @@ Where data becomes insight.
 
 A timeline of your inner life.
 
-Every day from when you started the app appears on a **vertical spine**, newest at the top, grouped by month with a divider header. Days with content — intention, notes, wins, or challenges — expand into full cards. Days with nothing written collapse to a compact dot on the spine, keeping the timeline uncluttered.
-
-Today's card is always open and highlighted. Every other card is collapsed by default but a single tap reveals all four sections: **Intention**, **Notes**, **Wins**, and **Challenges**. Wake-up time and the day number also appear in each card header.
+Every day from when you started the app appears on a **vertical spine**, newest at the top, grouped by month with a divider header. Every day shows as a full entry card — today's card is highlighted and always open; every other card is collapsed by default but a single tap reveals all four sections: **Intention**, **Notes**, **Wins**, and **Challenges**. Wake-up time and the day number appear in each card header. Empty days show an "empty" label and a "Nothing written yet" message when expanded, keeping the timeline complete without hiding any day.
 
 Each entry card has an **↗ button** that opens that exact date in the Today screen — so you can view or edit the habits and journal for that day without navigating manually.
 
@@ -277,11 +277,13 @@ The social activity stream for the group.
 
 **Today's Pulse** — a horizontal scrollable row of avatar circles, one per member. A green ring means they've completed today's habit check; a count badge shows how many challenge check-ins they've logged. Tapping any avatar either shows your own profile details or opens a **Nudge** confirmation for teammates who haven't checked in yet.
 
-**Nudge** — a one-tap motivational push. A confirmation dialog (with the member's name and a "Send Nudge" button) prevents accidental sends. The recipient receives a live toast: `💪 [Your Name] is cheering you on!`. The nudge button is disabled while the send is in flight to prevent double-nudges.
+**Nudge** — a one-tap motivational push. A confirmation dialog (with the member's name and a "Send Nudge" button) prevents accidental sends. The recipient receives a live toast: `💪 [Your Name] is cheering you on!` (suppressed if they have the group muted). The nudge button is disabled while the send is in flight to prevent double-nudges.
 
-**Activity feed** — a paginated timeline of challenge check-ins across the group. Each feed card shows the member's avatar, name, challenge emoji and name, check-in status, actual value logged (if any), in-challenge streak, and the date. Milestone check-ins are visually highlighted. Members can react with 🔥 ❤️ 💪 — reactions are tallied and toggled. Scrolling down to the end reveals a **"Load more"** button (shows a spinner while the next page fetches) to page through older entries.
+**Cheer** — tapping the pulse avatar of a member who has already completed today opens a **Cheer** confirmation dialog instead of the nudge dialog. Confirming adds a 🔥 reaction to their most recent feed entry and shows a success toast — one-tap positive reinforcement for teammates who are on track.
 
-**Weekly Digest** — when present, a pinned card at the top of the feed shows this week's group stats: total check-ins, top performer, most active member, and current group streak.
+**Activity feed** — a paginated timeline of challenge check-ins across the group. Each feed card shows the member's avatar, name, challenge emoji and name, check-in status, actual value logged (if any), in-challenge streak, and the date. Milestone check-ins are visually highlighted. Members can react with 🔥 ❤️ 💪 — reactions are tallied and toggled. A 👁 button beside the reaction chips fetches and displays the names of everyone who reacted. Scrolling down to the end reveals a **"Load more"** button (shows a spinner while the next page fetches) to page through older entries.
+
+**Weekly Digest** — always shown, a pinned card at the top of the feed displays the last completed week's (Mon–Sun) group stats: total check-ins, top performer, most active member, and current group streak — regardless of what day of the week you open the app.
 
 #### Challenges tab
 
@@ -293,29 +295,37 @@ Each challenge card shows its emoji, name, colour accent, date range, schedule, 
 
 **Creating / editing challenges** — admins (or all members, depending on the group's `challengeCreator` setting) can create challenges with: emoji, colour, name (up to 60 chars), habit type, target (amount up to 12 chars + unit up to 24 chars, or text target up to 60 chars), target direction (`≥ target` for steps/distance, `≤ target` for calories/screen time), schedule (Daily / Weekdays / Weekends / Custom days), and a date range with a visual day-count pill. Existing challenges can be edited; the creator or group admin can delete them (with a confirm dialog).
 
-**Trophies** — each challenge tracks earned achievements (e.g. streak milestones, completion rates). Trophy cards show the icon, title, description, and earned date.
+**Completed challenges** collapse into a "🏆 Completed Challenges" section. Expanding it loads the full participant list for every completed challenge — showing each member's avatar, completion rate, and top performer — so past efforts remain visible and celebrated.
 
 #### Members tab
 
 The full member roster with roles and actions.
 
-Each member row shows their avatar emoji, display name, role badge (Admin / Member), join date, and timezone (if set). Admins see a **Remove** button next to each non-admin member, guarded by a confirmation dialog.
+Each member row shows their avatar emoji, display name, role badge (Admin / Member), join date, and timezone (if set). Admins see two action buttons next to each non-admin member: a **Promote to Admin** button (flag icon, opens a confirmation dialog that explains the new permissions) and a **Remove** button (guarded by a confirmation dialog). Promoted members immediately see the Admin badge and gain access to all admin controls.
 
-The current user's own row shows a **Mute** toggle for silencing group notifications, and a **Leave Group** option (guarded by a confirmation dialog). Group creators cannot leave their own group without deleting it first.
+The **Weekly Leaderboard** within the Members tab shows all members ranked by this week's completion rate — gold, silver, bronze medals for top 3 and `#N` rank beyond. The current user's row is highlighted. Groups with more than five members show the top 5 by default with a "Show all N members" toggle.
+
+Tapping any member row opens an **enhanced profile modal** showing their avatar, display name, join date, streak, 30-day completion rate, this-week rate, and their About bio (if set). Challenge-by-challenge heatmaps appear below for shared challenges.
+
+The current user's own row shows a **Mute** toggle for silencing group notifications (including nudge toasts), and a **Leave Group** option (guarded by a confirmation dialog). Group creators cannot leave their own group without deleting it first.
 
 #### Chat tab
 
-A realtime group chat channel, up to **2,000 characters** per message.
+A realtime group chat channel, up to **2,000 characters** per message, capped at **100 messages** per group (a sliding window — the oldest message is deleted automatically when the 101st arrives, keeping storage lean).
 
-Messages are displayed in a scrollable list, newest at the bottom, with auto-scroll to the latest on load and on new arrivals. Each message shows the sender's avatar emoji, display name, timestamp, and message content. Own messages align right and show a **delete** button (×) on hover, guarded by a swipe-reveal on mobile.
+Messages are displayed in a scrollable list, newest at the bottom, with auto-scroll to the latest on load and on new arrivals. **Date separators** ("Today", "Yesterday", or a short date) appear between messages from different days, matching standard chat apps. Each message shows the sender's avatar emoji, display name, timestamp, and message content. Own messages align right and show a **delete** button (×) on hover, guarded by a confirmation dialog.
 
-**Emoji reactions** — any message can receive reactions (🔥 ❤️ 😂 👍 💯). Tapping an existing reaction toggles your vote; tapping the reaction picker opens a five-emoji tray.
+**Optimistic send** — the message appears in the chat instantly before the Supabase write completes. If the write fails, the message is silently removed and the input is restored — no lost text. The send button is disabled while the send is in flight to prevent double-sends.
 
-**Composer** — an auto-resizing textarea (expands up to 120 px as you type, resets to one line after send), an emoji picker button, and a send button. The **full emoji picker** is a categorised keyboard (Smileys & People, Animals, Food, Activities, Travel, Objects, Symbols) with a keyword search field — matching standard chat apps. Press Enter to send; Shift+Enter for a new line.
+**Emoji reactions** — any message can receive reactions (🔥 ❤️ 😂 👍 💯). Tapping an existing reaction toggles your vote; tapping the reaction picker opens a five-emoji tray. A 👁 button beside the reaction chips fetches and displays the names of everyone who reacted.
+
+**Search** — a magnifying-glass button in the composer row toggles a search bar above the message list. Typing filters the 100-message history live. A "No messages matching…" empty state appears when no results match. The search bar is cleared automatically when switching away from the Chat tab.
+
+**Composer** — an auto-resizing textarea (expands up to 120 px as you type, resets to one line after send), a search toggle button, an emoji picker button, and a send button. The **full emoji picker** is a categorised keyboard (Smileys & People, Animals, Food, Activities, Travel, Objects, Symbols) with a keyword search field. Press Enter to send; Shift+Enter for a new line.
 
 Entering the Chat tab marks the group as seen, clearing the unread badge.
 
-**Realtime** — new messages and reaction updates push instantly to all group members via Supabase Realtime, with no manual refresh needed.
+**Realtime** — new messages append incrementally (no full reload); deletes remove the specific message from state; reaction updates are scoped to only the affected message — all via Supabase Realtime with no manual refresh needed.
 
 #### Settings tab
 
@@ -466,19 +476,20 @@ All tables use **Row Level Security (RLS)** — users can only read and write th
 | Settings (toggles, emoji, order) | Immediate update → background write |
 | Settings (text inputs) | Immediate optimistic update → **800 ms debounce** before write |
 | Group / challenge / member mutations | Immediate Supabase write → realtime channel propagates to all other members |
-| Chat messages | Optimistic local append → Supabase insert → realtime confirms to other members |
+| Chat messages | Optimistic local append → Supabase insert → realtime INSERT confirms to all members; on failure: temp message removed + input restored |
 | Initial load | Migration check → parallel fetch of all four personal tables → render |
 
 ### Realtime
 
 Supabase Realtime subscriptions keep every open tab or window in sync with no manual refresh:
 
-| Channel | Tables watched |
-|---|---|
-| Personal data | `habits`, `habit_entries`, `journals` |
-| Group sync (per group) | `groups`, `group_members`, `group_challenges`, `group_challenge_members`, `group_challenge_checkins`, `group_messages`, `group_message_reactions`, `group_nudges` |
+| Channel | Tables watched | Notes |
+|---|---|---|
+| Personal data | `habits`, `habit_entries`, `journals` | One channel, shared across all personal tables |
+| Group sync (per group) | `groups`, `group_members`, `group_challenges`, `group_challenge_members`, `group_challenge_checkins`, `group_nudges` | Scoped to current group via `filter: group_id=eq.<id>` |
+| Group chat (per group) | `group_messages` (INSERT + DELETE), `group_message_reactions` (all events) | Separate channel; messages append incrementally; reactions update the specific message in-place |
 
-The group channel is scoped to the current group ID using `filter: group_id=eq.<id>` on each subscription, so only relevant events fire.
+Both group channels are scoped to the current group ID and are torn down when leaving the group detail screen.
 
 ---
 
@@ -549,7 +560,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **`ToastContext`** — non-blocking notification layer. Self-dismissing toasts used for milestone alerts, setting confirmations, undo-delete feedback, nudge notifications, and error reporting. Supports an optional `duration` override — the undo delete toast uses 5 000 ms; standard toasts auto-dismiss at 3 800 ms.
 
-**`GroupContext`** — social data layer. All group CRUD (create, update settings, delete, regenerate invite code), membership management (join by code, leave, remove member, mute), challenge CRUD (create, update, delete), challenge participation (join, check in), feed pagination (`fetchFeedPage`, 20 per page), realtime chat (`fetchMessages`, `sendMessage`, `deleteMessage`), emoji reactions on feed entries and messages, peer nudges (`sendNudge`, `markNudgeSeen`), `fetchPendingNudges` (shown as toasts on load), `fetchTodaysPulse`, `computeGroupStreak`, `computeGroupTrophies`, and `computeWeeklyDigest`. Mounted per-route — wrapped around `/groups/*` and `/join/:code` in `App.tsx` so the context is only active when needed. Constants: `MAX_MESSAGE_LENGTH = 2000`, `MAX_CHALLENGES_PER_GROUP = 15`, `MAX_GROUPS_CREATED_PER_USER = 10`, page size 20.
+**`GroupContext`** — social data layer. All group CRUD (create, update settings, delete, regenerate invite code), membership management (join by code, leave, remove member, promote to admin, mute), challenge CRUD (create, update, delete), challenge participation (join, check in), feed pagination (`fetchFeedPage`, 20 per page), realtime chat (`fetchMessages`, `sendMessage`, `deleteMessage`), chat sliding-window cap (`trimChatMessages` — fires after every send, deletes the oldest message when count exceeds 100), emoji reactions on feed entries and messages, peer nudges (`sendNudge`, `markNudgeSeen`), `fetchPendingNudges` (shown as toasts on load), `fetchTodaysPulse`, `computeGroupStreak`, `computeGroupTrophies`, and `computeWeeklyDigest`. `refetchGroups` uses 6 batched queries regardless of group count — member IDs, challenges, and messages are fetched with `.in('group_id', groupIds)` and grouped client-side, eliminating N+1 query patterns. `computeWeeklyDigest` always computes the previous Mon–Sun week, no Monday-only guard. Mounted per-route — wrapped around `/groups/*` and `/join/:code` in `App.tsx`. Constants: `MAX_MESSAGE_LENGTH = 2000`, `MAX_CHAT_MESSAGES = 100`, `MAX_CHALLENGES_PER_GROUP = 15`, `MAX_GROUPS_CREATED_PER_USER = 10`, page size 20.
 
 **`GroupUnreadContext`** — lightweight global unread counter. A single `totalUnread` integer updated by `GroupContext` whenever group lists are (re)fetched. Used by `TabBar` and `Sidebar` to render the red badge on the Groups navigation item without requiring the full `GroupContext` to be mounted at the top level.
 
@@ -568,6 +579,8 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 - `lib/auth/migration.ts` runs once per user account — it checks the `habits` table row count first; if data already exists in the database it skips migration and just clears stale localStorage keys.
 - `lib/dateUtils.ts` exports `toDateKeyInTimezone(tz)` — converts the current moment to a `YYYY-MM-DD` date key in the user's local timezone. Used by GroupContext and GroupDetailScreen when recording challenge check-ins so that members in different timezones get the correct "today" date.
 - The Group Detail screen's realtime channel (`group_sync_<groupId>`) subscribes to eight tables simultaneously, with per-table `filter` clauses scoped to the current group, so only events for the open group fire. The channel is torn down and rebuilt whenever `groupId` changes.
+- The chat realtime channel (`group_chat_<groupId>`) uses three separate event handlers: INSERT → hydrates the new message with the sender's profile and appends it to state (replacing the matching optimistic temp message by user+content), DELETE → removes by message ID, and `group_message_reactions` wildcard → re-fetches only the affected message's reactions using a `messagesRef` to avoid stale closure issues.
+- Chat messages are capped at 100 per group via a sliding window. `trimChatMessages` is called (fire-and-forget) after every successful send; if the group has > 100 messages it deletes the oldest one. This keeps per-group storage bounded without any user-visible disruption.
 - Invite code rate limiting is enforced client-side via the `invite_code_attempts` table — 10 attempts per rolling hour per user. Stale rows (older than 1 hour) are pruned on each new attempt to keep the table lean.
 
 ---
@@ -683,6 +696,6 @@ Journal-Tracker/
     © 2026 Habit Ink &nbsp;·&nbsp; Made by Kunaal
   </p>
   <p>
-    <sub>Habit Ink — v4.0</sub>
+    <sub>Habit Ink — v4.1</sub>
   </p>
 </div>

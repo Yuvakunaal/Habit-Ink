@@ -273,6 +273,16 @@ function formatTime(isoStr: string): string {
   return new Date(isoStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatDateLabel(iso: string): string {
+  const dateKey = iso.slice(0, 10);
+  const todayKey2 = toDateKey(new Date());
+  const yesterdayKey2 = toDateKey(new Date(Date.now() - 86400000));
+  if (dateKey === todayKey2) return 'Today';
+  if (dateKey === yesterdayKey2) return 'Yesterday';
+  const d = new Date(dateKey + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+}
+
 function getDateKey(daysAgo: number): string {
   return toDateKey(new Date(Date.now() - daysAgo * 86400000));
 }
@@ -697,6 +707,8 @@ export default function GroupDetailScreen() {
   const [nudgePopupFor, setNudgePopupFor] = useState<string | null>(null);
   const [nudgedMemberIds, setNudgedMemberIds] = useState<Set<string>>(new Set());
   const [sendingNudge, setSendingNudge] = useState(false);
+  const [cheerPopupFor, setCheerPopupFor] = useState<string | null>(null);
+  const [sendingCheer, setSendingCheer] = useState(false);
   const [feedReactionPickerFor, setFeedReactionPickerFor] = useState<string | null>(null);
   const [scalingReaction, setScalingReaction] = useState<{ entryId: string; emoji: string } | null>(null);
 
@@ -729,14 +741,9 @@ export default function GroupDetailScreen() {
       await loadFeed(undefined);
       const pulse = await fetchTodaysPulse(groupId);
       setTodaysPulse(pulse);
-      const today = new Date();
-      if (today.getDay() === 1) {
-        const streakDays = await computeGroupStreak(groupId);
-        const digest = await computeWeeklyDigest(groupId, streakDays);
-        setWeeklyDigest(digest);
-      } else {
-        setWeeklyDigest(null);
-      }
+      const streakDays = await computeGroupStreak(groupId);
+      const digest = await computeWeeklyDigest(groupId, streakDays);
+      setWeeklyDigest(digest);
     } catch {
       showToast('Failed to load feed.', 'error');
     } finally {
@@ -805,17 +812,51 @@ export default function GroupDetailScreen() {
   };
 
   const handlePulseAvatarClick = (member: MemberTodayStatus) => {
-    if (member.completedToday) {
+    if (member.userId === user?.id) {
+      // Scroll to own feed entry
       const el = document.getElementById(`feed-user-${member.userId}`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (member.userId === user?.id) return;
+    if (member.completedToday) {
+      setCheerPopupFor(prev => prev === member.userId ? null : member.userId);
+      return;
+    }
     // Only allow nudging once the member's local day has actually started
     const memberToday = member.timezone ? toDateKeyInTimezone(member.timezone) : toDateKey(new Date());
     const viewerToday = toDateKey(new Date());
     if (memberToday > viewerToday) return;
     setNudgePopupFor(prev => prev === member.userId ? null : member.userId);
+  };
+
+  const handleCheer = async (toUserId: string) => {
+    if (!groupId || sendingCheer) return;
+    setSendingCheer(true);
+    try {
+      // Find this member's most recent feed entry and add a 🔥 reaction
+      const memberEntry = feedItems.find(e => e.userId === toUserId);
+      if (memberEntry) {
+        const existing = memberEntry.reactions.find(r => r.emoji === '🔥');
+        if (!existing?.myReaction) {
+          await toggleFeedReaction(groupId, memberEntry.entryId, '🔥', false);
+          setFeedItems(prev => prev.map(e => {
+            if (e.entryId !== memberEntry.entryId) return e;
+            const reactions = [...e.reactions];
+            const idx = reactions.findIndex(r => r.emoji === '🔥');
+            if (idx >= 0) reactions[idx] = { ...reactions[idx], count: reactions[idx].count + 1, myReaction: true };
+            else reactions.push({ emoji: '🔥', count: 1, myReaction: true });
+            return { ...e, reactions };
+          }));
+        }
+      }
+      const member = todaysPulse.find(m => m.userId === toUserId);
+      showToast(`🔥 Cheered for ${member?.displayName ?? 'them'}!`, 'success');
+      setCheerPopupFor(null);
+    } catch {
+      showToast('Failed to send cheer.', 'error');
+    } finally {
+      setSendingCheer(false);
+    }
   };
 
   const handleFeedReaction = async (entry: FeedEntry, emoji: string) => {
@@ -1159,17 +1200,16 @@ export default function GroupDetailScreen() {
   };
 
   const handleToggleTrophyRoom = async () => {
-    const opening = !trophyRoomOpen;
-    setTrophyRoomOpen(opening);
-    if (!opening) return;
+    const willOpen = !trophyRoomOpen;
+    setTrophyRoomOpen(willOpen);
+    if (!willOpen) return;
     const missing = completedChallenges.filter(c => !participantsByChallenge[c.id]);
-    if (missing.length === 0) return;
-    const results = await Promise.all(missing.map(c => fetchChallengeParticipants(c.id)));
-    setParticipantsByChallenge(prev => {
-      const n = { ...prev };
-      missing.forEach((c, i) => { n[c.id] = results[i]; });
-      return n;
-    });
+    await Promise.all(missing.map(async c => {
+      try {
+        const participants = await fetchChallengeParticipants(c.id);
+        setParticipantsByChallenge(prev => ({ ...prev, [c.id]: participants }));
+      } catch { /* non-fatal */ }
+    }));
   };
 
   const canCreateChallenge = group ? !(group.challengeCreator === 'admin' && currentMemberRole !== 'admin') : false;
@@ -1349,10 +1389,14 @@ export default function GroupDetailScreen() {
   const [groupStreak, setGroupStreak] = useState(0);
   const [trophies, setTrophies] = useState<GroupTrophy[]>([]);
   const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
+  const [selectedMemberAbout, setSelectedMemberAbout] = useState<string | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [promotingMemberId, setPromotingMemberId] = useState<string | null>(null);
+  const [showPromoteConfirm, setShowPromoteConfirm] = useState(false);
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
 
-  const { computeGroupTrophies, removeMember } = useGroups();
+  const { computeGroupTrophies, removeMember, promoteMember } = useGroups();
 
   const loadMembersTab = useCallback(async () => {
     if (!groupId || members.length === 0) return;
@@ -1412,6 +1456,12 @@ export default function GroupDetailScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, groupId, members.length]);
 
+  useEffect(() => {
+    if (!selectedMember) { setSelectedMemberAbout(null); return; }
+    supabase.from('profiles').select('about').eq('id', selectedMember.userId).maybeSingle()
+      .then((res: { data: unknown }) => setSelectedMemberAbout((res.data as { about?: string } | null)?.about ?? null));
+  }, [selectedMember]);
+
   const handleRemoveMemberConfirm = async () => {
     if (!groupId || !removingMemberId) return;
     try {
@@ -1423,6 +1473,20 @@ export default function GroupDetailScreen() {
     } finally {
       setShowRemoveConfirm(false);
       setRemovingMemberId(null);
+    }
+  };
+
+  const handlePromoteMemberConfirm = async () => {
+    if (!groupId || !promotingMemberId) return;
+    try {
+      await promoteMember(groupId, promotingMemberId);
+      setMembers(prev => prev.map(m => m.userId === promotingMemberId ? { ...m, role: 'admin' as const } : m));
+      showToast('Member promoted to Admin.', 'success');
+    } catch {
+      showToast('Failed to promote member.', 'error');
+    } finally {
+      setShowPromoteConfirm(false);
+      setPromotingMemberId(null);
     }
   };
 
@@ -1508,10 +1572,10 @@ export default function GroupDetailScreen() {
           <p style={{ ...font.body, fontSize: 13, color: colors.mutedForeground }}>Loading…</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {weeklyLeaderboard.slice(0, 3).map((row, idx) => {
-              const medal = idx === 0 ? '👑' : idx === 1 ? '🥈' : '🥉';
+            {(leaderboardExpanded ? weeklyLeaderboard : weeklyLeaderboard.slice(0, 5)).map((row, idx) => {
+              const medal = idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
               return (
-                <div key={row.member.userId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div key={row.member.userId} style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: row.member.userId === user?.id ? colors.primary + '08' : 'transparent', borderRadius: 8, padding: '2px 4px' }}>
                   <span style={{ width: 18, fontSize: 13 }}>{medal}</span>
                   <AvatarCircle emoji={row.member.userEmoji} name={row.member.displayName} size={28} />
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -1524,6 +1588,11 @@ export default function GroupDetailScreen() {
                 </div>
               );
             })}
+            {weeklyLeaderboard.length > 5 && (
+              <button onClick={() => setLeaderboardExpanded(e => !e)} style={{ ...font.body, fontSize: 12, color: colors.primary, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '2px 4px' }}>
+                {leaderboardExpanded ? 'Show less' : `Show all ${weeklyLeaderboard.length} members`}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -1550,9 +1619,16 @@ export default function GroupDetailScreen() {
                     <p style={{ ...font.body, fontSize: 11, color: colors.mutedForeground, margin: 0 }}>{streak > 0 ? `🔥 ${streak} days` : 'No streak yet'}</p>
                   </div>
                   {currentMemberRole === 'admin' && m.userId !== user?.id && (
-                    <button onClick={(e) => { e.stopPropagation(); setRemovingMemberId(m.userId); setShowRemoveConfirm(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }}>
-                      <MoreVertical size={16} color={colors.mutedForeground} />
-                    </button>
+                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                      {m.role !== 'admin' && (
+                        <button onClick={(e) => { e.stopPropagation(); setPromotingMemberId(m.userId); setShowPromoteConfirm(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }} title="Promote to Admin">
+                          <Flag size={15} color={colors.mutedForeground} />
+                        </button>
+                      )}
+                      <button onClick={(e) => { e.stopPropagation(); setRemovingMemberId(m.userId); setShowRemoveConfirm(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }} title="Remove member">
+                        <MoreVertical size={16} color={colors.mutedForeground} />
+                      </button>
+                    </div>
                   )}
                 </div>
                 <MiniHeatmap entries={entries} days={28} colors={colors} dotSize={7} />
@@ -1581,6 +1657,28 @@ export default function GroupDetailScreen() {
                 <p style={{ ...font.body, fontSize: 12, color: colors.mutedForeground, margin: 0 }}>Member since {selectedMember.joinedAt.slice(0, 10)}</p>
               </div>
             </div>
+            {(() => {
+              const memberStats = weeklyLeaderboard.find(r => r.member.userId === selectedMember.userId);
+              return memberStats ? (
+                <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ ...font.heading, fontSize: 18, color: colors.primary, margin: 0 }}>{memberStats.streak}</p>
+                    <p style={{ ...font.body, fontSize: 10, color: colors.mutedForeground, margin: 0 }}>streak</p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ ...font.heading, fontSize: 18, color: colors.primary, margin: 0 }}>{memberStats.consistency30}%</p>
+                    <p style={{ ...font.body, fontSize: 10, color: colors.mutedForeground, margin: 0 }}>30d rate</p>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ ...font.heading, fontSize: 18, color: colors.primary, margin: 0 }}>{memberStats.rate}%</p>
+                    <p style={{ ...font.body, fontSize: 10, color: colors.mutedForeground, margin: 0 }}>this week</p>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+            {selectedMemberAbout && (
+              <p style={{ ...font.body, fontSize: 13, color: colors.mutedForeground, fontStyle: 'italic', margin: '0 0 12px', lineHeight: 1.5 }}>"{selectedMemberAbout}"</p>
+            )}
             {(() => {
               const habits = memberHabits[selectedMember.userId] ?? [];
               if (habits.length === 0) {
@@ -1618,6 +1716,15 @@ export default function GroupDetailScreen() {
         onConfirm={handleRemoveMemberConfirm}
         onCancel={() => { setShowRemoveConfirm(false); setRemovingMemberId(null); }}
       />
+      <ConfirmDialog
+        visible={showPromoteConfirm}
+        icon="👑"
+        title="Promote to Admin?"
+        message="They'll be able to edit group settings, remove members, and manage challenges."
+        confirmLabel="Promote"
+        onConfirm={handlePromoteMemberConfirm}
+        onCancel={() => { setShowPromoteConfirm(false); setPromotingMemberId(null); }}
+      />
     </div>
   );
 
@@ -1633,9 +1740,16 @@ export default function GroupDetailScreen() {
   const [hoveredEmojiName, setHoveredEmojiName] = useState<string | null>(null);
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [showDeleteMessageConfirm, setShowDeleteMessageConfirm] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const chatLoadedOnce = useRef(false);
+  const messagesRef = useRef<GroupMessage[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  const currentMemberRef = useRef<GroupMember | undefined>(undefined);
+  useEffect(() => { currentMemberRef.current = currentMember; }, [currentMember]);
 
   const { fetchMessages, sendMessage, deleteMessage, toggleMessageReaction } = useGroups();
 
@@ -1672,16 +1786,61 @@ export default function GroupDetailScreen() {
     if (!groupId) return;
     const channel = supabase
       .channel(`group_chat_${groupId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` }, () => {
-        if (chatLoadedOnce.current) loadChatTab();
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` }, async (payload) => {
+        if (!chatLoadedOnce.current) return;
+        const row = payload.new as { id: string; group_id: string; user_id: string; content: string; created_at: string };
+        const { data: profile } = await supabase.from('profiles').select('id, user_name, user_emoji, avatar_url').eq('id', row.user_id).maybeSingle();
+        const newMsg: GroupMessage = {
+          id: row.id,
+          groupId: row.group_id,
+          userId: row.user_id,
+          content: row.content,
+          createdAt: row.created_at,
+          displayName: (profile as { user_name?: string } | null)?.user_name || 'Member',
+          avatarUrl: (profile as { avatar_url?: string } | null)?.avatar_url ?? '',
+          userEmoji: (profile as { user_emoji?: string } | null)?.user_emoji ?? '😊',
+          reactions: [],
+        };
+        setMessages(prev => {
+          // Replace matching optimistic temp message from same user+content
+          const withoutTemp = prev.filter(m => !(m.id.startsWith('temp_') && m.userId === row.user_id && m.content === row.content));
+          if (withoutTemp.some(m => m.id === row.id)) return withoutTemp;
+          return [...withoutTemp, newMsg];
+        });
+        setTimeout(scrollToBottom, 50);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_message_reactions' }, () => {
-        if (chatLoadedOnce.current) loadChatTab();
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` }, (payload) => {
+        if (!chatLoadedOnce.current) return;
+        const deletedId = (payload.old as { id?: string })?.id;
+        if (deletedId) setMessages(prev => prev.filter(m => m.id !== deletedId));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_message_reactions' }, (payload) => {
+        if (!chatLoadedOnce.current) return;
+        const row = (payload.new ?? payload.old) as { message_id?: string } | null;
+        const messageId = row?.message_id;
+        if (!messageId || !messagesRef.current.some(m => m.id === messageId)) return;
+        supabase.from('group_message_reactions').select('message_id, user_id, emoji').eq('message_id', messageId)
+          .then((res: { data: { message_id: string; user_id: string; emoji: string }[] | null }) => {
+            const rxns = res.data;
+            if (!rxns) return;
+            const EMOJIS_ALL = ['🔥', '❤️', '😂', '👍', '💯'];
+            setMessages(prev => prev.map(m => {
+              if (m.id !== messageId) return m;
+              return {
+                ...m,
+                reactions: EMOJIS_ALL.map(emoji => ({
+                  emoji,
+                  count: rxns.filter((r: { emoji: string }) => r.emoji === emoji).length,
+                  myReaction: rxns.some((r: { emoji: string; user_id: string }) => r.emoji === emoji && r.user_id === user?.id),
+                })).filter(r => r.count > 0),
+              };
+            }));
+          });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId]);
+  }, [groupId, scrollToBottom, user?.id]);
 
   const handleLoadEarlierMessages = async () => {
     if (!groupId || messages.length === 0) return;
@@ -1696,16 +1855,34 @@ export default function GroupDetailScreen() {
   };
 
   const handleSendMessage = async () => {
-    if (!groupId || !messageInput.trim()) return;
+    if (!groupId || !messageInput.trim() || sendingMessage) return;
     const content = messageInput.trim();
+    const tempId = `temp_${Date.now()}`;
     setMessageInput('');
     if (messageInputRef.current) messageInputRef.current.style.height = 'auto';
     setShowEmojiPicker(false);
+    setSendingMessage(true);
+    const tempMsg: GroupMessage = {
+      id: tempId,
+      groupId,
+      userId: user!.id,
+      content,
+      createdAt: new Date().toISOString(),
+      displayName: currentMember?.displayName ?? 'You',
+      avatarUrl: currentMember?.avatarUrl ?? '',
+      userEmoji: currentMember?.userEmoji ?? '😊',
+      reactions: [],
+    };
+    setMessages(prev => [...prev, tempMsg]);
+    setTimeout(scrollToBottom, 50);
     try {
       await sendMessage(groupId, content);
-      await loadChatTab();
     } catch {
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessageInput(content);
       showToast('Failed to send message.', 'error');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -1763,6 +1940,10 @@ export default function GroupDetailScreen() {
     ? EMOJI_FLAT.filter(e => e.name.toLowerCase().includes(emojiSearch.trim().toLowerCase()))
     : null;
 
+  const displayedMessages = chatSearchQuery.trim()
+    ? messages.filter(m => m.content.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+    : messages;
+
   const renderChatTab = () => (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div
@@ -1776,91 +1957,134 @@ export default function GroupDetailScreen() {
         {hasEarlierMessages && (
           <button onClick={handleLoadEarlierMessages} style={{ ...font.body, fontSize: 12, color: colors.primary, background: 'none', border: `1px solid ${colors.border}`, borderRadius: 9, padding: '8px 0', cursor: 'pointer', marginBottom: 10 }}>Load earlier messages</button>
         )}
+        {showChatSearch && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', flexShrink: 0 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: colors.muted, borderRadius: 10, padding: '6px 10px', border: `1px solid ${colors.border}` }}>
+              <Search size={13} color={colors.mutedForeground} />
+              <input
+                autoFocus
+                value={chatSearchQuery}
+                onChange={e => setChatSearchQuery(e.target.value)}
+                placeholder="Search messages…"
+                style={{ ...font.body, fontSize: 13, color: colors.foreground, background: 'none', border: 'none', outline: 'none', flex: 1, minWidth: 0 }}
+              />
+              {chatSearchQuery && (
+                <button onClick={() => setChatSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                  <X size={13} color={colors.mutedForeground} />
+                </button>
+              )}
+            </div>
+            <button onClick={() => { setShowChatSearch(false); setChatSearchQuery(''); }} style={{ ...font.body, fontSize: 12, color: colors.primary, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>Cancel</button>
+          </div>
+        )}
         {loadingMessages ? (
           <p style={{ ...font.body, fontSize: 13, color: colors.mutedForeground, textAlign: 'center' }}>Loading…</p>
-        ) : messages.length === 0 ? (
-          <p style={{ ...font.body, fontSize: 13, color: colors.mutedForeground, textAlign: 'center', padding: '30px 0' }}>No messages yet. Say hello! 👋</p>
+        ) : displayedMessages.length === 0 ? (
+          chatSearchQuery.trim()
+            ? <p style={{ ...font.body, fontSize: 13, color: colors.mutedForeground, textAlign: 'center', padding: '20px 0' }}>No messages matching "{chatSearchQuery}"</p>
+            : <p style={{ ...font.body, fontSize: 13, color: colors.mutedForeground, textAlign: 'center', padding: '30px 0' }}>No messages yet. Say hello! 👋</p>
         ) : (
-          messages.map((m, idx) => {
+          displayedMessages.map((m, idx) => {
             const isMine = m.userId === user?.id;
-            const prevMsg = messages[idx - 1];
+            const prevMsg = displayedMessages[idx - 1];
             const isNewSenderGroup = !prevMsg || prevMsg.userId !== m.userId;
             const reactions = m.reactions.filter(r => r.count > 0);
             const canDelete = isMine || currentMemberRole === 'admin';
+            const mDateKey = m.createdAt.slice(0, 10);
+            const prevDateKey = idx > 0 ? displayedMessages[idx - 1].createdAt.slice(0, 10) : null;
+            const showSeparator = mDateKey !== prevDateKey;
 
             return (
-              <div
-                key={m.id}
-                className="chat-row"
-                style={{ position: 'relative', display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', gap: 8, marginTop: isNewSenderGroup ? 12 : 2 }}
-              >
-                {!isMine && (
-                  <div style={{ width: 28, flexShrink: 0 }}>
-                    {isNewSenderGroup && <AvatarCircle emoji={m.userEmoji} name={m.displayName} size={28} />}
+              <React.Fragment key={m.id}>
+                {showSeparator && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 4px' }}>
+                    <div style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+                    <span style={{ ...font.body, fontSize: 11, color: colors.mutedForeground, whiteSpace: 'nowrap', padding: '0 6px' }}>{formatDateLabel(m.createdAt)}</span>
+                    <div style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
                   </div>
                 )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '72%', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-                  {!isMine && isNewSenderGroup && (
-                    <p style={{ ...font.label, fontSize: 11, color: colors.primary, margin: '0 0 2px 2px' }}>{m.displayName}</p>
+                <div
+                  className="chat-row"
+                  style={{ position: 'relative', display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', gap: 8, marginTop: isNewSenderGroup ? 12 : 2 }}
+                >
+                  {!isMine && (
+                    <div style={{ width: 28, flexShrink: 0 }}>
+                      {isNewSenderGroup && <AvatarCircle emoji={m.userEmoji} name={m.displayName} size={28} />}
+                    </div>
                   )}
 
-                  {/* Relative wrapper scoped to JUST the bubble — keeps the delete badge anchored
-                      to the bubble's own corner even when a name label sits above it. */}
-                  <div style={{ position: 'relative' }}>
-                    <div
-                      onClick={() => setChatReactionPickerFor(prev => prev === m.id ? null : m.id)}
-                      style={{
-                        cursor: 'pointer', padding: '8px 12px',
-                        borderRadius: isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                        backgroundColor: isMine ? colors.primary : colors.muted,
-                      }}
-                    >
-                      <p style={{ ...font.body, fontSize: 14, color: isMine ? '#fff' : colors.foreground, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>
-                      <p style={{ ...font.body, fontSize: 10, color: isMine ? '#ffffffb0' : colors.mutedForeground, margin: '3px 0 0', textAlign: 'right' }}>{formatTime(m.createdAt)}</p>
-                    </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '72%', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                    {!isMine && isNewSenderGroup && (
+                      <p style={{ ...font.label, fontSize: 11, color: colors.primary, margin: '0 0 2px 2px' }}>{m.displayName}</p>
+                    )}
 
-                    {/* Delete badge: absolutely positioned over the bubble's outer corner — never
-                        shifts layout, faint at rest, fully visible on row hover (see .chat-row / .chat-delete-btn) */}
-                    {canDelete && (
-                      <button
-                        className="chat-delete-btn"
-                        onClick={(e) => { e.stopPropagation(); setDeletingMessageId(m.id); setShowDeleteMessageConfirm(true); }}
-                        aria-label="Delete message"
+                    {/* Relative wrapper scoped to JUST the bubble — keeps the delete badge anchored
+                        to the bubble's own corner even when a name label sits above it. */}
+                    <div style={{ position: 'relative' }}>
+                      <div
+                        onClick={() => setChatReactionPickerFor(prev => prev === m.id ? null : m.id)}
                         style={{
-                          position: 'absolute', top: -6, [isMine ? 'left' : 'right']: -6,
-                          width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          backgroundColor: colors.card, border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                          cursor: 'pointer', flexShrink: 0,
+                          cursor: 'pointer', padding: '8px 12px',
+                          borderRadius: isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                          backgroundColor: isMine ? colors.primary : colors.muted,
                         }}
                       >
-                        <Trash2 size={10} color={colors.destructive} />
-                      </button>
+                        <p style={{ ...font.body, fontSize: 14, color: isMine ? '#fff' : colors.foreground, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</p>
+                        <p style={{ ...font.body, fontSize: 10, color: isMine ? '#ffffffb0' : colors.mutedForeground, margin: '3px 0 0', textAlign: 'right' }}>{formatTime(m.createdAt)}</p>
+                      </div>
+
+                      {/* Delete badge: absolutely positioned over the bubble's outer corner — never
+                          shifts layout, faint at rest, fully visible on row hover (see .chat-row / .chat-delete-btn) */}
+                      {canDelete && (
+                        <button
+                          className="chat-delete-btn"
+                          onClick={(e) => { e.stopPropagation(); setDeletingMessageId(m.id); setShowDeleteMessageConfirm(true); }}
+                          aria-label="Delete message"
+                          style={{
+                            position: 'absolute', top: -6, [isMine ? 'left' : 'right']: -6,
+                            width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: colors.card, border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                            cursor: 'pointer', flexShrink: 0,
+                          }}
+                        >
+                          <Trash2 size={10} color={colors.destructive} />
+                        </button>
+                      )}
+                    </div>
+
+                    {reactions.length > 0 && (
+                      <div style={{ display: 'flex', gap: 4, marginTop: 4, alignItems: 'center' }}>
+                        {reactions.map(r => (
+                          <button key={r.emoji} onClick={(e) => { e.stopPropagation(); handleChatReaction(m, r.emoji); }} style={{
+                            ...font.body, fontSize: 11, padding: '2px 7px', borderRadius: 7, cursor: 'pointer',
+                            border: `1px solid ${r.myReaction ? colors.primary : colors.border}`,
+                            backgroundColor: r.myReaction ? colors.primary + '18' : 'transparent',
+                            color: r.myReaction ? colors.primary : colors.mutedForeground,
+                          }}>{r.emoji} {r.count}</button>
+                        ))}
+                        <button onClick={async () => {
+                          const rxns = await supabase.from('group_message_reactions').select('user_id, emoji').eq('message_id', m.id);
+                          const uids = [...new Set((rxns.data ?? []).map((r: { user_id: string }) => r.user_id))];
+                          if (uids.length === 0) return;
+                          const profiles = await supabase.from('profiles').select('id, user_name').in('id', uids);
+                          const names = (profiles.data ?? []).map((p: { user_name?: string }) => p.user_name || 'Member').join(', ');
+                          showToast(`Reacted: ${names}`, 'info');
+                        }} style={{ background: 'none', border: 'none', cursor: 'pointer', ...font.body, fontSize: 10, color: colors.mutedForeground, padding: '0 2px', marginLeft: 2 }}>
+                          👁
+                        </button>
+                      </div>
+                    )}
+
+                    {chatReactionPickerFor === m.id && (
+                      <div style={{ display: 'flex', gap: 4, backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 6, marginTop: 4, width: 'fit-content', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
+                        {REACTION_EMOJIS.map(emoji => (
+                          <button key={emoji} onClick={() => handleChatReaction(m, emoji)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 2 }}>{emoji}</button>
+                        ))}
+                      </div>
                     )}
                   </div>
-
-                  {reactions.length > 0 && (
-                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                      {reactions.map(r => (
-                        <button key={r.emoji} onClick={(e) => { e.stopPropagation(); handleChatReaction(m, r.emoji); }} style={{
-                          ...font.body, fontSize: 11, padding: '2px 7px', borderRadius: 7, cursor: 'pointer',
-                          border: `1px solid ${r.myReaction ? colors.primary : colors.border}`,
-                          backgroundColor: r.myReaction ? colors.primary + '18' : 'transparent',
-                          color: r.myReaction ? colors.primary : colors.mutedForeground,
-                        }}>{r.emoji} {r.count}</button>
-                      ))}
-                    </div>
-                  )}
-
-                  {chatReactionPickerFor === m.id && (
-                    <div style={{ display: 'flex', gap: 4, backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 6, marginTop: 4, width: 'fit-content', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
-                      {REACTION_EMOJIS.map(emoji => (
-                        <button key={emoji} onClick={() => handleChatReaction(m, emoji)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, padding: 2 }}>{emoji}</button>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
+              </React.Fragment>
             );
           })
         )}
@@ -1876,6 +2100,13 @@ export default function GroupDetailScreen() {
         </p>
       )}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', paddingTop: 10, flexShrink: 0 }}>
+        <button
+          onClick={() => { setShowChatSearch(s => !s); if (showChatSearch) setChatSearchQuery(''); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, width: 40, height: 40, flexShrink: 0 }}
+          aria-label="Search messages"
+        >
+          <Search size={18} color={showChatSearch ? colors.primary : colors.mutedForeground} />
+        </button>
         <button
           onClick={() => setShowEmojiPicker(true)}
           style={{
@@ -1902,11 +2133,12 @@ export default function GroupDetailScreen() {
           maxLength={MAX_MESSAGE_LENGTH}
           style={{ ...font.body, fontSize: 14, color: colors.foreground, border: `1.5px solid ${colors.border}`, borderRadius: 20, padding: '10px 16px', backgroundColor: colors.card, flex: 1, outline: 'none', resize: 'none', overflowY: 'auto', maxHeight: 120, boxSizing: 'border-box' }}
         />
-        <button onClick={handleSendMessage} disabled={!messageInput.trim()} style={{
-          backgroundColor: messageInput.trim() ? colors.primary : colors.muted, border: 'none', borderRadius: '50%',
-          width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: messageInput.trim() ? 'pointer' : 'default', flexShrink: 0,
+        <button onClick={handleSendMessage} disabled={!messageInput.trim() || sendingMessage} style={{
+          backgroundColor: messageInput.trim() && !sendingMessage ? colors.primary : colors.muted, border: 'none', borderRadius: '50%',
+          width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: messageInput.trim() && !sendingMessage ? 'pointer' : 'default', flexShrink: 0,
+          opacity: sendingMessage ? 0.6 : 1,
         }}>
-          <Send size={16} color={messageInput.trim() ? '#fff' : colors.mutedForeground} />
+          <Send size={16} color={messageInput.trim() && !sendingMessage ? '#fff' : colors.mutedForeground} />
         </button>
       </div>
 
@@ -2443,6 +2675,7 @@ export default function GroupDetailScreen() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_nudges', filter: `group_id=eq.${groupId}` }, async (payload) => {
         const row = payload.new as { id: string; to_user_id: string; from_user_id: string };
         if (row.to_user_id !== user?.id) return;
+        if (currentMemberRef.current?.muted) return;
         const { data: profile } = await supabase.from('profiles').select('user_name').eq('id', row.from_user_id).single();
         showToast(`💪 ${profile?.user_name ?? 'Someone'} is cheering you on!`, 'success');
         markNudgeSeen(row.id);
@@ -2461,6 +2694,8 @@ export default function GroupDetailScreen() {
     setFeedReactionPickerFor(null);
     setChatReactionPickerFor(null);
     setNudgePopupFor(null);
+    setCheerPopupFor(null);
+    if (tab !== 'chat') { setShowChatSearch(false); setChatSearchQuery(''); }
     if (tab === 'chat' && groupId) markGroupSeen(groupId);
   };
 
@@ -2560,7 +2795,7 @@ export default function GroupDetailScreen() {
                 </div>
                 <p style={{ ...font.body, fontSize: 11, color: colors.mutedForeground, margin: 0, flexShrink: 0 }}>{formatRelativeTime(entry.createdAt)}</p>
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', position: 'relative' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', position: 'relative', alignItems: 'center' }}>
                 {FEED_REACTION_EMOJIS.map(emoji => {
                   const r = entry.reactions.find(x => x.emoji === emoji);
                   if (!r || r.count === 0) return null;
@@ -2581,6 +2816,18 @@ export default function GroupDetailScreen() {
                   style={{ ...font.body, fontSize: 12, padding: '4px 9px', borderRadius: 8, cursor: 'pointer', border: `1px solid ${colors.border}`, backgroundColor: 'transparent', color: colors.mutedForeground }}>
                   +
                 </button>
+                {entry.reactions.some(r => r.count > 0) && (
+                  <button onClick={async () => {
+                    const rxns = await supabase.from('group_reactions').select('from_user_id').eq('entry_id', entry.entryId);
+                    const uids = [...new Set((rxns.data ?? []).map((r: { from_user_id: string }) => r.from_user_id))];
+                    if (uids.length === 0) return;
+                    const profiles = await supabase.from('profiles').select('id, user_name').in('id', uids);
+                    const names = (profiles.data ?? []).map((p: { user_name?: string }) => p.user_name || 'Member').join(', ');
+                    showToast(`Reacted: ${names}`, 'info');
+                  }} style={{ background: 'none', border: 'none', cursor: 'pointer', ...font.body, fontSize: 10, color: colors.mutedForeground, padding: '0 2px' }}>
+                    👁
+                  </button>
+                )}
                 {feedReactionPickerFor === entry.entryId && (
                   <div style={{ position: 'absolute', bottom: 32, left: 0, zIndex: 10, display: 'flex', gap: 4, backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 10, padding: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
                     {FEED_REACTION_EMOJIS.map(emoji => (
@@ -2757,6 +3004,17 @@ export default function GroupDetailScreen() {
         disabled={sendingNudge}
         onConfirm={() => nudgePopupFor && handleNudge(nudgePopupFor)}
         onCancel={() => setNudgePopupFor(null)}
+      />
+      <ConfirmDialog
+        visible={!!cheerPopupFor}
+        icon="🔥"
+        title={`Cheer for ${todaysPulse.find(m => m.userId === cheerPopupFor)?.displayName ?? 'them'}?`}
+        message="They've already completed today — send them a 🔥 to show your appreciation!"
+        confirmLabel={sendingCheer ? 'Sending…' : 'Send Cheer 🔥'}
+        cancelLabel="Cancel"
+        disabled={sendingCheer}
+        onConfirm={() => cheerPopupFor && handleCheer(cheerPopupFor)}
+        onCancel={() => setCheerPopupFor(null)}
       />
 
       <Modal visible={!!loggingChallenge} onClose={() => setLoggingChallenge(null)}>
