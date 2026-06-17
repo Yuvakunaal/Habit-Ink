@@ -11,13 +11,13 @@
     <img src="https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 6" />
     <img src="https://img.shields.io/badge/Supabase-2-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" />
     <img src="https://img.shields.io/badge/React_Router-6-CA4245?style=flat-square&logo=react-router&logoColor=white" alt="React Router" />
-    <img src="https://img.shields.io/badge/version-3.0-8b5cf6?style=flat-square" alt="Version 3.0" />
+    <img src="https://img.shields.io/badge/version-4.0-8b5cf6?style=flat-square" alt="Version 4.0" />
   </p>
 </div>
 
 ---
 
-Most habit trackers are too gamified. Most journals are too freeform. **Habit Ink** is both — a structured daily tracker and a personal journal living in the same interface, built with a design philosophy that respects your attention and grows quieter the more you use it.
+Most habit trackers are too gamified. Most journals are too freeform. **Habit Ink** is both — a structured daily tracker and a personal journal living in the same interface, built with a design philosophy that respects your attention and grows quieter the more you use it. And now with **Groups**: track habits and run challenges with friends in real time.
 
 ---
 
@@ -34,6 +34,9 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
   - [Journal](#journal)
   - [Profile](#profile)
   - [Settings](#settings)
+  - [Groups](#groups)
+  - [Group Detail](#group-detail)
+  - [Join Group](#join-group)
   - [Privacy Policy](#privacy-policy)
   - [404 — Not Found](#404--not-found)
 - [Themes](#themes)
@@ -53,7 +56,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | | Feature | Detail |
 |---|---|---|
 | 🔐 | **Google Sign-In** | One-tap OAuth via Supabase from the landing page — session persists across tabs and reloads |
-| ☁️ | **Cloud sync** | All habits, journals, and settings saved to Supabase — accessible on any device |
+| ☁️ | **Cloud sync** | All habits, journals, groups, and settings saved to Supabase — accessible on any device |
 | 🔄 | **Realtime** | Cross-tab sync via Supabase Realtime — open two windows, changes appear in both |
 | ↩ | **Undo delete** | Deleting a habit shows a 5-second undo toast — nothing is permanently gone until the window closes |
 | ✦ | **Daily intention** | One sentence to anchor your morning |
@@ -71,6 +74,10 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | 📡 | **Offline banner** | Fixed top bar appears automatically when network is lost |
 | 🛡️ | **Error boundary** | Full-page and compact per-screen error recovery UI |
 | 📝 | **SEO Blog** | Six long-form articles targeting habit-tracking keywords, with per-post schema, canonical, and OG tags |
+| 👥 | **Groups** | Create or join groups (up to 10 created per user) — invite friends via a shareable link and track habits together |
+| 🏆 | **Group Challenges** | Up to 15 concurrent challenges per group — with join/check-in, per-member streaks, completion rates, and an emoji-reactions feed |
+| 💬 | **Group Chat** | Realtime chat (up to 2,000 chars per message) with emoji reactions, own-message delete, and a full categorised emoji picker |
+| 💪 | **Nudges** | Send a motivational nudge to any group member who hasn't checked in today — they receive a live toast notification |
 
 ---
 
@@ -244,6 +251,105 @@ The **Account** section shows your Google profile photo, full name, and email ad
 
 ---
 
+### Groups
+
+Your social accountability layer, at `/groups`.
+
+The Groups screen lists every group you belong to. Each card shows the group emoji, name, colour accent stripe, member count, active challenge count, the group motto (if set), and a row of coloured dots showing today's completion status across members — green for done, muted for not yet.
+
+**Creating a group** — tap "New Group" to open a modal. Choose an emoji icon from 24 options, pick one of 8 accent colours, enter a name (up to 40 characters), and create. The group is immediately added to your list and an invite link modal opens automatically so you can share it right away.
+
+**Limits** — each user can create up to 10 groups. Groups you join (but didn't create) don't count toward this limit.
+
+**Invite link** — every group gets a unique 12-character alphanumeric invite code. The shareable URL (`/join/:code`) can be copied to clipboard from the invite modal and sent to anyone.
+
+**Unread badge** — groups with unread chat messages show a red badge on the card and a count badge on the Groups tab icon in the navigation.
+
+---
+
+### Group Detail
+
+The heart of the group experience, at `/groups/:id`. Five tabs let members, challenges, chat, and settings all live in the same view.
+
+#### Feed tab
+
+The social activity stream for the group.
+
+**Today's Pulse** — a horizontal scrollable row of avatar circles, one per member. A green ring means they've completed today's habit check; a count badge shows how many challenge check-ins they've logged. Tapping any avatar either shows your own profile details or opens a **Nudge** confirmation for teammates who haven't checked in yet.
+
+**Nudge** — a one-tap motivational push. A confirmation dialog (with the member's name and a "Send Nudge" button) prevents accidental sends. The recipient receives a live toast: `💪 [Your Name] is cheering you on!`. The nudge button is disabled while the send is in flight to prevent double-nudges.
+
+**Activity feed** — a paginated timeline of challenge check-ins across the group. Each feed card shows the member's avatar, name, challenge emoji and name, check-in status, actual value logged (if any), in-challenge streak, and the date. Milestone check-ins are visually highlighted. Members can react with 🔥 ❤️ 💪 — reactions are tallied and toggled. Scrolling down to the end reveals a **"Load more"** button (shows a spinner while the next page fetches) to page through older entries.
+
+**Weekly Digest** — when present, a pinned card at the top of the feed shows this week's group stats: total check-ins, top performer, most active member, and current group streak.
+
+#### Challenges tab
+
+Run shared challenges inside the group. Up to **15 concurrent challenges** per group.
+
+Each challenge card shows its emoji, name, colour accent, date range, schedule, a `joined / total` participant count, how many members completed it today, and a progress bar through the challenge's total day span. Tapping a card expands it to show the full participant leaderboard — each participant's avatar, display name, today's completion status, in-challenge streak, overall completion rate, and actual value logged today (for number/decimal challenges).
+
+**Joining and checking in** — non-joined challenges show a "Join" button. Joined challenges show "Log Today" (or a green checkmark if already logged). The log modal matches the habit types: Yes/No, Number, Decimal, Time, or Custom — with amount and unit fields for numeric types. Checking in triggers a live feed update visible to all group members.
+
+**Creating / editing challenges** — admins (or all members, depending on the group's `challengeCreator` setting) can create challenges with: emoji, colour, name (up to 60 chars), habit type, target (amount up to 12 chars + unit up to 24 chars, or text target up to 60 chars), target direction (`≥ target` for steps/distance, `≤ target` for calories/screen time), schedule (Daily / Weekdays / Weekends / Custom days), and a date range with a visual day-count pill. Existing challenges can be edited; the creator or group admin can delete them (with a confirm dialog).
+
+**Trophies** — each challenge tracks earned achievements (e.g. streak milestones, completion rates). Trophy cards show the icon, title, description, and earned date.
+
+#### Members tab
+
+The full member roster with roles and actions.
+
+Each member row shows their avatar emoji, display name, role badge (Admin / Member), join date, and timezone (if set). Admins see a **Remove** button next to each non-admin member, guarded by a confirmation dialog.
+
+The current user's own row shows a **Mute** toggle for silencing group notifications, and a **Leave Group** option (guarded by a confirmation dialog). Group creators cannot leave their own group without deleting it first.
+
+#### Chat tab
+
+A realtime group chat channel, up to **2,000 characters** per message.
+
+Messages are displayed in a scrollable list, newest at the bottom, with auto-scroll to the latest on load and on new arrivals. Each message shows the sender's avatar emoji, display name, timestamp, and message content. Own messages align right and show a **delete** button (×) on hover, guarded by a swipe-reveal on mobile.
+
+**Emoji reactions** — any message can receive reactions (🔥 ❤️ 😂 👍 💯). Tapping an existing reaction toggles your vote; tapping the reaction picker opens a five-emoji tray.
+
+**Composer** — an auto-resizing textarea (expands up to 120 px as you type, resets to one line after send), an emoji picker button, and a send button. The **full emoji picker** is a categorised keyboard (Smileys & People, Animals, Food, Activities, Travel, Objects, Symbols) with a keyword search field — matching standard chat apps. Press Enter to send; Shift+Enter for a new line.
+
+Entering the Chat tab marks the group as seen, clearing the unread badge.
+
+**Realtime** — new messages and reaction updates push instantly to all group members via Supabase Realtime, with no manual refresh needed.
+
+#### Settings tab
+
+Admin-only configuration panel (non-admins see a read-only view of group info).
+
+Editable fields: **Name** (40 chars), **Emoji** (24 presets), **Colour** (8 options), **Description** (120 chars, with live counter), **Motto** (100 chars, with live counter), **Motto By** (40 chars, with live counter), **Welcome Message** (200 chars, with live counter), **Member Limit** (integer, 2–100, validated on save), and **Challenge Creator** (Any Member / Admin Only).
+
+**Invite link** — shows the current invite URL with a copy button. A "Regenerate" button issues a new code (invalidating all previously shared links), guarded by a confirmation dialog.
+
+**Danger zone** — admins can permanently **Delete Group** (removes all members, challenges, and messages). Non-admin members see a **Leave Group** option. Both are guarded by themed confirmation dialogs.
+
+---
+
+### Join Group
+
+The public invite-link landing page at `/join/:code`. Works for both logged-in and logged-out users, and does not require `AuthGate`.
+
+The page resolves the invite code from the URL and transitions through these states:
+
+| State | What the user sees |
+|---|---|
+| `loading` | Spinner card while the code is looked up |
+| `not_found` | Error card — "This invite link is invalid or has expired." |
+| `rate_limited` | Error card — user exceeded 10 join attempts in the last hour |
+| `unauthenticated` | Group preview is hidden; "Sign in with Google" button redirects back to this URL after auth |
+| `ready_to_join` | Full group card (emoji, name, description, member count / limit); "Join Group" button; full indicator if the group is at capacity |
+| `already_member` | Green "You're already in this group" banner; "Open Group" button navigates directly to the group detail |
+
+On successful join, the group's **welcome message** (if set) is shown as a toast, and the user is navigated to the group detail screen.
+
+**Rate limiting** — the `invite_code_attempts` table records every lookup per user. More than 10 attempts within a rolling 60-minute window blocks further lookups until the hour resets. Old attempt rows are pruned on each new request.
+
+---
+
 ### Privacy Policy
 
 A brand-styled public page at `/privacy` — accessible without signing in, linked from the landing page footer.
@@ -290,7 +396,7 @@ The **partial-completion colour** (shown on calendar cells and heatmap) is each 
 Three distinct layouts, no awkward in-between states.
 
 **Mobile — under 768 px**
-Six-tab bottom navigation bar. Touch-friendly tap targets throughout. Modals slide up as bottom sheets with a visible drag handle. Settings fills the full screen. The 15-week heatmap scrolls horizontally so cells stay legible. Stat grids collapse to 2 × 2.
+Six-tab bottom navigation bar (Today · Habits · Calendar · Progress · Journal · Groups). Touch-friendly tap targets throughout. Modals slide up as bottom sheets with a visible drag handle. Settings fills the full screen. The 15-week heatmap scrolls horizontally so cells stay legible. Stat grids collapse to 2 × 2.
 
 **Tablet / Small Desktop — 768 – 1023 px**
 Sidebar replaces the bottom bar. Single-column content with generous padding. Habit list becomes a two-column card grid.
@@ -313,6 +419,8 @@ Habit Ink uses **Supabase Auth** with the Google OAuth provider.
 
 **First-login migration** — if the browser has legacy localStorage data from before the Supabase backend was added, it is silently migrated to the database on first sign-in and the local keys are cleared. Migration is safe: if the database already has data for the user, the local keys are simply cleared and no overwrite happens.
 
+**Public routes** — `/privacy`, `/blog`, `/blog/:slug`, and `/join/:code` render entirely outside `AuthGate`. They have no Supabase queries and work without a session. The `/join/:code` page prompts unauthenticated users to sign in with Google, then redirects them back to the same invite URL after auth.
+
 ---
 
 ## Data Storage
@@ -321,6 +429,8 @@ All application data is stored in **Supabase Postgres** and synced via **Supabas
 
 ### Database tables
 
+#### Personal data
+
 | Table | What's stored |
 |---|---|
 | `profiles` | Theme, font, text size, custom quote, display name, avatar emoji, about text, weight, height, habit order, sidebar state, app start date |
@@ -328,7 +438,22 @@ All application data is stored in **Supabase Postgres** and synced via **Supabas
 | `habit_entries` | Status (done / missed / pending) and actual value per habit per day |
 | `journals` | Wake-up time, intention, notes, wins, challenges per day |
 
-All tables use **Row Level Security (RLS)** — users can only read and write their own rows. A Postgres trigger creates a `profiles` row automatically when a new user signs up via Google.
+#### Groups
+
+| Table | What's stored |
+|---|---|
+| `groups` | Name, emoji, colour, description, motto, motto author, welcome message, member limit (2–100), challenge creator setting, invite code, created-by user |
+| `group_members` | User ID, group ID, role (admin / member), joined-at, last-seen-at, muted flag |
+| `group_challenges` | Name, emoji, colour, habit type, target (amount + unit or text), target direction (gte / lte), schedule, custom days, start date, end date, created-by user |
+| `group_challenge_members` | Who has joined each challenge (group ID, challenge ID, user ID, joined-at) |
+| `group_challenge_checkins` | Per-user per-date check-in records for each challenge (status, actual value) |
+| `group_reactions` | Emoji reactions on feed entries (entry ID, user ID, emoji) |
+| `group_messages` | Chat messages (content capped at 2,000 chars by a DB check constraint, group ID, user ID, created-at) |
+| `group_message_reactions` | Emoji reactions on chat messages (message ID, user ID, emoji) |
+| `group_nudges` | Peer nudge records (group ID, from user, to user, seen flag, created-at) |
+| `invite_code_attempts` | Rate-limit log for invite link lookups (user ID, attempted-at); pruned automatically on each new request |
+
+All tables use **Row Level Security (RLS)** — users can only read and write their own rows (or rows for groups they are a member of). A Postgres trigger creates a `profiles` row automatically when a new user signs up via Google.
 
 ### Sync strategy
 
@@ -340,11 +465,20 @@ All tables use **Row Level Security (RLS)** — users can only read and write th
 | Journal fields | Immediate optimistic update → **800 ms debounce** per date before upsert |
 | Settings (toggles, emoji, order) | Immediate update → background write |
 | Settings (text inputs) | Immediate optimistic update → **800 ms debounce** before write |
-| Initial load | Migration check → parallel fetch of all four tables → render |
+| Group / challenge / member mutations | Immediate Supabase write → realtime channel propagates to all other members |
+| Chat messages | Optimistic local append → Supabase insert → realtime confirms to other members |
+| Initial load | Migration check → parallel fetch of all four personal tables → render |
 
 ### Realtime
 
-Supabase Realtime subscriptions on `habits`, `habit_entries`, and `journals` keep every open tab or window in sync. Changes made in one tab appear in another without a refresh.
+Supabase Realtime subscriptions keep every open tab or window in sync with no manual refresh:
+
+| Channel | Tables watched |
+|---|---|
+| Personal data | `habits`, `habit_entries`, `journals` |
+| Group sync (per group) | `groups`, `group_members`, `group_challenges`, `group_challenge_members`, `group_challenge_checkins`, `group_messages`, `group_message_reactions`, `group_nudges` |
+
+The group channel is scoped to the current group ID using `filter: group_id=eq.<id>` on each subscription, so only relevant events fire.
 
 ---
 
@@ -405,17 +539,21 @@ Available on the Today screen (desktop only). Press **?** at any time to open th
 
 No UI framework. No CSS library. Every component is hand-built with React and inline styles — which means the theme system works by swapping a plain object of colour tokens, not by toggling class names or CSS variables.
 
-**Four contexts power the whole app:**
+**Six contexts power the whole app:**
 
-**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` sits inside the outer `<Routes>` and handles six states: (1) auth loading → `AppSkeleton`; (2) no session at `/` → `LandingScreen`; (3) no session at any other path → `<Navigate to="/" replace />`; (4) session present but data not yet loaded → `AppSkeleton`; (5) session present + unknown route → `NotFoundScreen` rendered full-page without sidebar; (6) session present + known route → renders children (`AppLayout`). A `KNOWN_ROUTES` set (`/`, `/habits`, `/calendar`, `/progress`, `/journal`, `/profile`, `/settings`) drives case 5.
+**`AuthContext`** — authentication layer. Holds the Supabase session and the current user object. Exposes `signIn()` (triggers Google OAuth) and `signOut()`. `AuthGate` sits inside the outer `<Routes>` and handles six states: (1) auth loading → `AppSkeleton`; (2) no session at `/` → `LandingScreen`; (3) no session at any other path → `<Navigate to="/" replace />`; (4) session present but data not yet loaded → `AppSkeleton`; (5) session present + unknown route → `NotFoundScreen` rendered full-page without sidebar; (6) session present + known route → renders children (`AppLayout`). A `KNOWN_ROUTES` set (`/`, `/habits`, `/calendar`, `/progress`, `/journal`, `/profile`, `/settings`, `/groups` and all sub-paths) drives case 5.
 
-**`HabitContext`** — core data layer. All habits, all entries, all journal records. On login: runs the optional one-time localStorage migration, then fetches all four tables in parallel. Mutations are optimistic — state updates instantly and a background Supabase write follows. Journal saves are debounced per date (800 ms) to batch rapid keystrokes into a single write. Supabase Realtime subscriptions on all three tables keep every open tab in sync. Exposes streak calculations, completion rates, date-aware schedule checks, and journal helpers.
+**`HabitContext`** — core personal data layer. All habits, all entries, all journal records. On login: runs the optional one-time localStorage migration, then fetches all four tables in parallel. Mutations are optimistic — state updates instantly and a background Supabase write follows. Journal saves are debounced per date (800 ms) to batch rapid keystrokes into a single write. Supabase Realtime subscriptions on all three personal tables keep every open tab in sync. Exposes streak calculations, completion rates, date-aware schedule checks, and journal helpers.
 
 **`SettingsContext`** — appearance and profile. Theme, font style, font size, custom quote, user name, avatar emoji, bio, body metrics, habit order, sidebar collapse state. Reads from the `profiles` table on login. Toggles and button taps write immediately; text inputs are debounced 800 ms. Also owns `habitOrder` and `sidebarCollapsed`, previously stored directly in localStorage by `TodayScreen` and `TabBar`.
 
-**`ToastContext`** — non-blocking notification layer. Self-dismissing toasts used for milestone alerts, setting confirmations, undo-delete feedback, and error reporting. Supports an optional `duration` override — the undo delete toast uses 5 000 ms; standard toasts auto-dismiss at 3 800 ms.
+**`ToastContext`** — non-blocking notification layer. Self-dismissing toasts used for milestone alerts, setting confirmations, undo-delete feedback, nudge notifications, and error reporting. Supports an optional `duration` override — the undo delete toast uses 5 000 ms; standard toasts auto-dismiss at 3 800 ms.
 
-**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) registers three fully public routes before the wildcard: `/privacy` → `PrivacyScreen`, `/blog` → `BlogListScreen`, `/blog/:slug` → `BlogPostScreen`. All three render outside `AuthGate` and the app-level providers — no auth check, no Supabase queries. The wildcard `*` falls through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
+**`GroupContext`** — social data layer. All group CRUD (create, update settings, delete, regenerate invite code), membership management (join by code, leave, remove member, mute), challenge CRUD (create, update, delete), challenge participation (join, check in), feed pagination (`fetchFeedPage`, 20 per page), realtime chat (`fetchMessages`, `sendMessage`, `deleteMessage`), emoji reactions on feed entries and messages, peer nudges (`sendNudge`, `markNudgeSeen`), `fetchPendingNudges` (shown as toasts on load), `fetchTodaysPulse`, `computeGroupStreak`, `computeGroupTrophies`, and `computeWeeklyDigest`. Mounted per-route — wrapped around `/groups/*` and `/join/:code` in `App.tsx` so the context is only active when needed. Constants: `MAX_MESSAGE_LENGTH = 2000`, `MAX_CHALLENGES_PER_GROUP = 15`, `MAX_GROUPS_CREATED_PER_USER = 10`, page size 20.
+
+**`GroupUnreadContext`** — lightweight global unread counter. A single `totalUnread` integer updated by `GroupContext` whenever group lists are (re)fetched. Used by `TabBar` and `Sidebar` to render the red badge on the Groups navigation item without requiring the full `GroupContext` to be mounted at the top level.
+
+**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) registers four fully public routes before the wildcard: `/privacy` → `PrivacyScreen`, `/blog` → `BlogListScreen`, `/blog/:slug` → `BlogPostScreen`, and `/join/:code` → `GroupProvider` wrapping `JoinGroupScreen`. All four render outside `AuthGate` and the app-level providers — no auth check, no personal Supabase queries. The wildcard `*` falls through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). Both include a nested route `<Route path="/groups" element={<GroupProvider><Outlet /></GroupProvider>}>` with index (`GroupsScreen`) and `:id` (`GroupDetailScreen`) children. The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
 
 **Blog content system** — six blog posts are stored as TypeScript files under `src/blog/posts/`. Each exports a `BlogPost` object (slug, title, description, date, readingTime, category, tags, excerpt, author, content, keywords). `src/blog/index.ts` exports `ALL_POSTS` (sorted newest-first), `getPostBySlug()`, `getRelatedPosts()`, and `ALL_CATEGORIES`. Content is written in a lightweight markdown dialect and rendered by `MarkdownRenderer` — a zero-dependency component that handles h1/h2/h3, `**bold**`, `_italic_`, `[link](url)`, `> blockquote`, unordered lists, ordered lists, and `---` horizontal rules entirely in React without `dangerouslySetInnerHTML`.
 
@@ -423,11 +561,14 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 - The 15-week heatmap uses a `ResizeObserver` with `useLayoutEffect` to compute cell size before the first paint — no layout flash.
 - Drag-to-reorder on the Today screen uses native HTML5 drag events (desktop only). Touch devices see no grip handle and no `draggable` attribute, preventing scroll interference. The resulting order is saved to `profiles.habit_order` in the database.
 - The confetti animation is a pure `<canvas>` implementation with no dependencies.
-- `Modal` is fully responsive: a centred dialog on desktop, a bottom sheet on mobile — same component, different style based on the `useIsDesktop` hook. `ConfirmDialog` wraps `Modal` to provide reusable themed confirmation flows (sign-out, etc.).
+- `Modal` is fully responsive: a centred dialog on desktop, a bottom sheet on mobile — same component, different style based on the `useIsDesktop` hook. `ConfirmDialog` wraps `Modal` to provide reusable themed confirmation flows (sign-out, group delete, nudge, etc.) with an optional `disabled` prop for in-flight async actions.
 - Day number is calculated by normalising both the start date and the target date to noon before diffing — so the number is always correct regardless of what time of day you open the app.
 - Habit deletion uses a **two-tap inline confirm** (first tap expands a red warning panel inside the modal; second tap confirms), followed by a **5-second undo toast**. The Supabase delete is deferred until the undo window closes — clicking Undo simply cancels the pending timer.
 - The `lib/debounce.ts` utility is a generic TypeScript debounce that preserves the full argument type signature, used by both `SettingsContext` and `HabitContext`.
 - `lib/auth/migration.ts` runs once per user account — it checks the `habits` table row count first; if data already exists in the database it skips migration and just clears stale localStorage keys.
+- `lib/dateUtils.ts` exports `toDateKeyInTimezone(tz)` — converts the current moment to a `YYYY-MM-DD` date key in the user's local timezone. Used by GroupContext and GroupDetailScreen when recording challenge check-ins so that members in different timezones get the correct "today" date.
+- The Group Detail screen's realtime channel (`group_sync_<groupId>`) subscribes to eight tables simultaneously, with per-table `filter` clauses scoped to the current group, so only events for the open group fire. The channel is torn down and rebuilt whenever `groupId` changes.
+- Invite code rate limiting is enforced client-side via the `invite_code_attempts` table — 10 attempts per rolling hour per user. Stale rows (older than 1 hour) are pruned on each new attempt to keep the table lean.
 
 ---
 
@@ -478,19 +619,21 @@ Journal-Tracker/
         │   ├── AppSkeleton.tsx       Loading spinner shown while DB data loads
         │   ├── AuthGate.tsx          Auth + route guard: redirects unknown paths, renders NotFoundScreen for logged-in 404s
         │   ├── CompletionRing.tsx    Circular SVG progress indicator
-        │   ├── ConfirmDialog.tsx     Reusable themed confirmation modal
+        │   ├── ConfirmDialog.tsx     Reusable themed confirmation modal (supports disabled prop for in-flight actions)
         │   ├── Confetti.tsx          Canvas confetti animation
         │   ├── ErrorBoundary.tsx     React error boundary — full-page or compact (per-screen)
         │   ├── MarkdownRenderer.tsx  Zero-dependency markdown → React renderer (no dangerouslySetInnerHTML)
         │   ├── Modal.tsx             Dialog (desktop) / bottom sheet (mobile)
         │   ├── MonthHeatmap.tsx      15-week activity heatmap
         │   ├── OfflineBanner.tsx     Fixed top banner shown when navigator.onLine is false
-        │   ├── TabBar.tsx            Mobile bottom nav + collapsible sidebar
+        │   ├── TabBar.tsx            Mobile bottom nav (6 tabs, with Groups unread badge) + collapsible sidebar
         │   └── WeeklyChart.tsx       7-day completion bar chart
         ├── constants/
         │   └── themes.ts             Five complete colour palettes
         ├── context/
         │   ├── AuthContext.tsx        Session · user · signIn · signOut
+        │   ├── GroupContext.tsx       Groups · challenges · chat · nudges · feed · trophies · Supabase sync · Realtime
+        │   ├── GroupUnreadContext.tsx Global unread message counter for Groups nav badge
         │   ├── HabitContext.tsx       Habits · entries · journals · Supabase sync · Realtime
         │   ├── SettingsContext.tsx    Theme · font · profile · Supabase profiles sync
         │   └── ToastContext.tsx       Non-blocking toasts with optional duration override
@@ -499,6 +642,7 @@ Journal-Tracker/
         │   ├── useFont.ts             Active font family + size scale
         │   └── useIsDesktop.ts        Responsive breakpoint hooks (768 / 1024 px)
         ├── lib/
+        │   ├── dateUtils.ts           toDateKeyInTimezone — timezone-aware YYYY-MM-DD key for challenge check-ins
         │   ├── debounce.ts            Generic typed debounce utility
         │   ├── env.ts                 Validates required env vars at startup; exports typed env object
         │   ├── logger.ts              Centralised logError / logWarn (swappable for Sentry)
@@ -506,8 +650,9 @@ Journal-Tracker/
         │   ├── auth/
         │   │   └── migration.ts       One-time localStorage → Supabase migration
         │   └── db/
-        │       ├── mappers.ts         camelCase ↔ snake_case row converters
-        │       └── types.ts           TypeScript types matching the DB schema
+        │       ├── groupTypes.ts      TypeScript interfaces for all group-related DB entities
+        │       ├── mappers.ts         camelCase ↔ snake_case row converters (personal + group tables)
+        │       └── types.ts           TypeScript types matching the full DB schema
         ├── screens/
         │   ├── LandingScreen.tsx      Public landing page (8 sections + Google sign-in modal)
         │   ├── BlogListScreen.tsx     Public blog index (/blog) — featured post + category filter + post grid
@@ -521,8 +666,11 @@ Journal-Tracker/
         │   ├── ProgressScreen.tsx     Stats · charts · insights
         │   ├── JournalScreen.tsx      Timeline journal
         │   ├── ProfileScreen.tsx      User profile
-        │   └── SettingsScreen.tsx     App settings
-        ├── App.tsx                    Root layout + routing (3 public routes + AuthGate wildcard)
+        │   ├── SettingsScreen.tsx     App settings
+        │   ├── GroupsScreen.tsx       Groups list — create group, view all groups, invite modal (/groups)
+        │   ├── GroupDetailScreen.tsx  Group detail — Feed · Challenges · Members · Chat · Settings tabs (/groups/:id)
+        │   └── JoinGroupScreen.tsx    Public invite-link page — join flow with rate limiting (/join/:code)
+        ├── App.tsx                    Root layout + routing (4 public routes + AuthGate wildcard)
         ├── main.tsx                   Entry point
         └── vite-env.d.ts              Vite environment type declarations
     └── vercel.json                Vercel deployment config — SPA rewrite rule + build settings
@@ -535,6 +683,6 @@ Journal-Tracker/
     © 2026 Habit Ink &nbsp;·&nbsp; Made by Kunaal
   </p>
   <p>
-    <sub>Habit Ink — v3.0</sub>
+    <sub>Habit Ink — v4.0</sub>
   </p>
 </div>

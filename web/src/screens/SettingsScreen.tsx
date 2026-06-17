@@ -141,6 +141,25 @@ export default function SettingsScreen() {
       <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
         <div style={{ maxWidth: isDesktop ? 680 : undefined, margin: isDesktop ? "0 auto" : undefined, padding: isDesktop ? "0 32px 40px" : "0 16px 32px" }}>
 
+          {/* View Profile nav row */}
+          <div style={{ paddingTop: 20, paddingBottom: 8 }}>
+            <button
+              onClick={() => navigate('/profile')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '14px 16px', borderRadius: 12,
+                backgroundColor: colors.card, border: `1px solid ${colors.border}`,
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Feather size={16} color={colors.primary} />
+                <span style={{ ...font.label, fontSize: font.size(14), color: colors.foreground }}>View Profile</span>
+              </div>
+              <span style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground }}>→</span>
+            </button>
+          </div>
+
           {/* Theme */}
           <Section title="Journal Theme">
             <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 10 }}>

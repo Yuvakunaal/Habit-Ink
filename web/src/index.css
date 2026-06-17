@@ -44,6 +44,43 @@ textarea {
   display: none;
 }
 
+/* Slim, theme-aware scrollbar for the chat thread — visible (not hidden) so users can see and
+   grab it, unlike .hide-scrollbar. Thumb color is passed in per-element via CSS custom properties. */
+.chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb, rgba(120, 120, 120, 0.4)) transparent;
+}
+.chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, rgba(120, 120, 120, 0.4));
+  border-radius: 10px;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, rgba(120, 120, 120, 0.6));
+}
+
+/* Delete badge on chat bubbles — sits absolutely positioned over the bubble corner so it never
+   shifts layout. Faint by default (discoverable without hovering, works on touch), full opacity
+   on hover/focus so it doesn't visually compete with the message itself at rest. */
+.chat-delete-btn {
+  opacity: 0.4;
+  transition: opacity 0.15s ease, transform 0.1s ease, background-color 0.15s ease;
+}
+.chat-row:hover .chat-delete-btn {
+  opacity: 0.85;
+}
+.chat-delete-btn:hover {
+  opacity: 1 !important;
+}
+.chat-delete-btn:active {
+  transform: scale(0.88);
+}
+
 /* Slide-up modal animation */
 @keyframes slideUp {
   from { transform: translateY(100%); }

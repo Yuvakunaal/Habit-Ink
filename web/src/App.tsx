@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, Outlet } from "react-router-dom";
 
 import { HabitProvider } from "@/context/HabitContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { GroupUnreadProvider } from "@/context/GroupUnreadContext";
+import { GroupProvider } from "@/context/GroupContext";
 import { AuthGate } from "@/components/AuthGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TabBar, Sidebar } from "@/components/TabBar";
@@ -22,6 +24,9 @@ import JournalScreen from "@/screens/JournalScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
 import BlogListScreen from "@/screens/BlogListScreen";
 import BlogPostScreen from "@/screens/BlogPostScreen";
+import JoinGroupScreen from "@/screens/JoinGroupScreen";
+import GroupsScreen from "@/screens/GroupsScreen";
+import GroupDetailScreen from "@/screens/GroupDetailScreen";
 
 function AppLayout() {
   const colors = useColors();
@@ -42,6 +47,7 @@ function AppLayout() {
       "/journal": "Journal — Habit Ink",
       "/profile": "Profile — Habit Ink",
       "/settings": "Settings — Habit Ink",
+      "/groups": "Groups — Habit Ink",
     };
     document.title = titles[location.pathname] ?? "Habit Ink";
   }, [location.pathname]);
@@ -70,6 +76,10 @@ function AppLayout() {
               <Route path="/journal" element={<JournalScreen />} />
               <Route path="/profile" element={<ProfileScreen />} />
               <Route path="/settings" element={<SettingsScreen />} />
+              <Route path="/groups" element={<GroupProvider><Outlet /></GroupProvider>}>
+                <Route index element={<GroupsScreen />} />
+                <Route path=":id" element={<GroupDetailScreen />} />
+              </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>
@@ -90,6 +100,10 @@ function AppLayout() {
             <Route path="/progress" element={<ProgressScreen />} />
             <Route path="/journal" element={<JournalScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/groups" element={<GroupProvider><Outlet /></GroupProvider>}>
+              <Route index element={<GroupsScreen />} />
+              <Route path=":id" element={<GroupDetailScreen />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ErrorBoundary>
@@ -102,22 +116,25 @@ function AppLayout() {
 export function App() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <ToastProvider>
-          <HabitProvider>
-            <Routes>
-              <Route path="/privacy"    element={<PrivacyScreen />} />
-              <Route path="/blog"       element={<BlogListScreen />} />
-              <Route path="/blog/:slug" element={<BlogPostScreen />} />
-              <Route path="*" element={
-                <AuthGate>
-                  <AppLayout />
-                </AuthGate>
-              } />
-            </Routes>
-          </HabitProvider>
-        </ToastProvider>
-      </SettingsProvider>
+      <GroupUnreadProvider>
+        <SettingsProvider>
+          <ToastProvider>
+            <HabitProvider>
+              <Routes>
+                <Route path="/privacy"    element={<PrivacyScreen />} />
+                <Route path="/blog"       element={<BlogListScreen />} />
+                <Route path="/blog/:slug" element={<BlogPostScreen />} />
+                <Route path="/join/:code" element={<GroupProvider><JoinGroupScreen /></GroupProvider>} />
+                <Route path="*" element={
+                  <AuthGate>
+                    <AppLayout />
+                  </AuthGate>
+                } />
+              </Routes>
+            </HabitProvider>
+          </ToastProvider>
+        </SettingsProvider>
+      </GroupUnreadProvider>
     </AuthProvider>
   );
 }

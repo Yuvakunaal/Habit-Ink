@@ -30,7 +30,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (!settingsLoaded || !dataLoaded) return <AppSkeleton />;
 
   // Unknown route while logged in → full-page 404, no sidebar
-  if (!KNOWN_ROUTES.has(location.pathname)) return <NotFoundScreen />;
+  const isKnownRoute = KNOWN_ROUTES.has(location.pathname) || location.pathname.startsWith("/groups");
+  if (!isKnownRoute) return <NotFoundScreen />;
 
   return <>{children}</>;
 }

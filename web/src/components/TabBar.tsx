@@ -10,21 +10,34 @@ import {
   ChevronLeft,
   ChevronRight,
   BookMarked,
+  Users2,
 } from "lucide-react";
 import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useSettings } from "@/context/SettingsContext";
 import { toDateKey, useHabits } from "@/context/HabitContext";
 import { useAuth } from "@/context/AuthContext";
+import { useGroupUnread } from "@/context/GroupUnreadContext";
 
-// Shared nav items for both sidebar (desktop) and bottom bar (mobile)
+// Desktop sidebar — all 7 tabs
 const NAV_TABS = [
   { path: "/", label: "Today", Icon: BookOpen },
   { path: "/habits", label: "Habits", Icon: CheckSquare2 },
   { path: "/calendar", label: "Calendar", Icon: Calendar },
   { path: "/progress", label: "Progress", Icon: TrendingUp },
   { path: "/journal", label: "Journal", Icon: BookMarked },
+  { path: "/groups", label: "Groups", Icon: Users2 },
   { path: "/profile", label: "Profile", Icon: User },
+];
+
+// Mobile TabBar — 6 tabs (Profile removed to avoid overcrowding)
+const MOBILE_NAV_TABS = [
+  { path: "/", label: "Today", Icon: BookOpen },
+  { path: "/habits", label: "Habits", Icon: CheckSquare2 },
+  { path: "/calendar", label: "Calendar", Icon: Calendar },
+  { path: "/progress", label: "Progress", Icon: TrendingUp },
+  { path: "/journal", label: "Journal", Icon: BookMarked },
+  { path: "/groups", label: "Groups", Icon: Users2 },
 ];
 
 const EW = 248;
@@ -46,6 +59,7 @@ export function TabBar() {
   const font = useFont();
   const navigate = useNavigate();
   const location = useLocation();
+  const { totalUnread } = useGroupUnread();
 
   return (
     <nav
@@ -58,8 +72,8 @@ export function TabBar() {
         flexShrink: 0,
       }}
     >
-      {NAV_TABS.map(({ path, label, Icon }) => {
-        const active = location.pathname === path;
+      {MOBILE_NAV_TABS.map(({ path, label, Icon }) => {
+        const active = location.pathname === path || (path === '/groups' && location.pathname.startsWith('/groups'));
         const color = active ? colors.primary : colors.mutedForeground;
         return (
           <button
@@ -76,10 +90,18 @@ export function TabBar() {
               border: "none",
               cursor: "pointer",
               padding: "6px 0",
+              position: "relative",
             }}
           >
             <Icon size={22} color={color} />
             <span style={{ ...font.body, fontSize: 11, color }}>{label}</span>
+            {path === '/groups' && totalUnread > 0 && (
+              <div style={{
+                width: 8, height: 8, borderRadius: 4,
+                backgroundColor: colors.destructive,
+                position: 'absolute', top: 6, right: 'calc(50% - 14px)',
+              }} />
+            )}
           </button>
         );
       })}
@@ -95,6 +117,7 @@ export function Sidebar() {
   const { userName, userEmoji } = useSettings();
   const { getCompletionForDate } = useHabits();
   const { user } = useAuth();
+  const { totalUnread } = useGroupUnread();
 
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
   const googleName = user?.user_metadata?.full_name as string | undefined;
@@ -199,8 +222,9 @@ export function Sidebar() {
       {/* Nav items */}
       <div style={{ flex: 1, padding: collapsed ? "6px 8px" : "6px 10px", overflow: "hidden" }}>
         {NAV_TABS.map(({ path, label, Icon }) => {
-          const active = location.pathname === path;
+          const active = location.pathname === path || (path === '/groups' && location.pathname.startsWith('/groups'));
           const isHovered = hovered === path;
+          const showUnreadDot = path === '/groups' && totalUnread > 0;
           return (
             <button
               key={path}
@@ -229,9 +253,17 @@ export function Sidebar() {
                 border: "none",
                 cursor: "pointer",
                 transition: "background-color 0.12s ease",
+                position: "relative",
               }}
             >
               <Icon size={18} color={active ? colors.primary : colors.mutedForeground} />
+              {collapsed && showUnreadDot && (
+                <div style={{
+                  width: 8, height: 8, borderRadius: 4,
+                  backgroundColor: colors.destructive,
+                  position: 'absolute', top: 6, right: 6,
+                }} />
+              )}
               {!collapsed && (
                 <>
                   <span
@@ -247,7 +279,14 @@ export function Sidebar() {
                   >
                     {label}
                   </span>
-                  {active && (
+                  {showUnreadDot && (
+                    <div style={{
+                      width: 8, height: 8, borderRadius: 4,
+                      backgroundColor: colors.destructive,
+                      flexShrink: 0,
+                    }} />
+                  )}
+                  {active && !showUnreadDot && (
                     <div
                       style={{
                         width: 6,

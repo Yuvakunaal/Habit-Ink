@@ -13,6 +13,8 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   /** Renders confirm button in destructive red */
   destructive?: boolean;
+  /** Disables the confirm button (e.g. while an async action is in flight) */
+  disabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
   /** Optional slot rendered between message and buttons (e.g. user info card) */
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   confirmLabel = "Confirm",
   destructive = false,
+  disabled = false,
   onCancel,
   onConfirm,
   children,
@@ -124,7 +127,8 @@ export function ConfirmDialog({
           }}
         >
           <button
-            onClick={onConfirm}
+            onClick={disabled ? undefined : onConfirm}
+            disabled={disabled}
             style={{
               ...font.label,
               fontSize: font.size(16),
@@ -134,9 +138,11 @@ export function ConfirmDialog({
               border: "none",
               borderRadius: 13,
               padding: "15px 24px",
-              cursor: "pointer",
+              cursor: disabled ? "not-allowed" : "pointer",
               width: "100%",
               letterSpacing: 0.1,
+              opacity: disabled ? 0.6 : 1,
+              transition: "opacity 0.15s",
             }}
           >
             {confirmLabel}

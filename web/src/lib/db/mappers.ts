@@ -7,6 +7,7 @@ import type {
   ScheduleType,
   EntryStatus,
 } from "@/context/HabitContext";
+import type { Group, GroupChallenge, GroupMember } from "./groupTypes";
 import type { ThemeName } from "@/constants/themes";
 import type { FontStyle, FontSize } from "@/context/SettingsContext";
 
@@ -134,4 +135,63 @@ export function buildJournalsMap(
     acc[row.date] = mapJournalFromDB(row);
     return acc;
   }, {});
+}
+
+// ── Groups ────────────────────────────────────────────────────────────────────
+
+export function mapGroupFromDB(row: Database["public"]["Tables"]["groups"]["Row"]): Group {
+  return {
+    id: row.id,
+    name: row.name,
+    emoji: row.emoji,
+    color: row.color,
+    description: row.description,
+    motto: row.motto,
+    mottoAuthor: row.motto_author,
+    welcomeMessage: row.welcome_message,
+    memberLimit: row.member_limit,
+    challengeCreator: row.challenge_creator as 'any' | 'admin',
+    createdBy: row.created_by,
+    inviteCode: row.invite_code,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapChallengeFromDB(row: Database["public"]["Tables"]["group_challenges"]["Row"]): GroupChallenge {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    createdBy: row.created_by,
+    name: row.name,
+    emoji: row.emoji,
+    color: row.color,
+    habitType: row.habit_type,
+    target: row.target,
+    targetComparison: row.target_comparison === 'lte' ? 'lte' : 'gte',
+    schedule: row.schedule,
+    customDays: row.custom_days ?? undefined,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    createdAt: row.created_at,
+  };
+}
+
+export function mapMemberFromDB(
+  row: Database["public"]["Tables"]["group_members"]["Row"],
+  profile: { user_name?: string; user_emoji?: string; avatar_url?: string; timezone?: string } | null,
+): GroupMember {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    userId: row.user_id,
+    role: row.role as 'admin' | 'member',
+    joinedAt: row.joined_at,
+    lastSeenAt: row.last_seen_at,
+    muted: row.muted,
+    displayName: profile?.user_name || 'Member',
+    avatarUrl: profile?.avatar_url ?? '',
+    userEmoji: profile?.user_emoji ?? '😊',
+    timezone: profile?.timezone,
+  };
 }

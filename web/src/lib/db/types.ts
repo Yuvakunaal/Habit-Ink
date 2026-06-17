@@ -19,6 +19,8 @@ export interface Database {
           custom_quote_author: string;
           habit_order: string[];
           sidebar_collapsed: boolean;
+          avatar_url: string;
+          timezone: string;
           created_at: string;
           updated_at: string;
         };
@@ -37,6 +39,8 @@ export interface Database {
           custom_quote_author?: string;
           habit_order?: string[];
           sidebar_collapsed?: boolean;
+          avatar_url?: string;
+          timezone?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -55,6 +59,8 @@ export interface Database {
           custom_quote_author?: string;
           habit_order?: string[];
           sidebar_collapsed?: boolean;
+          avatar_url?: string;
+          timezone?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -73,6 +79,7 @@ export interface Database {
           emoji: string;
           color: string;
           archived: boolean;
+          visible_in_groups: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -88,6 +95,7 @@ export interface Database {
           emoji?: string;
           color?: string;
           archived?: boolean;
+          visible_in_groups?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -103,6 +111,7 @@ export interface Database {
           emoji?: string;
           color?: string;
           archived?: boolean;
+          visible_in_groups?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -178,6 +187,140 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
+      };
+      groups: {
+        Row: {
+          id: string; name: string; emoji: string; color: string;
+          description: string; motto: string; motto_author: string;
+          welcome_message: string; member_limit: number; challenge_creator: string;
+          created_by: string; invite_code: string; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; name: string; emoji?: string; color?: string;
+          description?: string; motto?: string; motto_author?: string;
+          welcome_message?: string; member_limit?: number; challenge_creator?: string;
+          created_by: string; invite_code: string; created_at?: string; updated_at?: string;
+        };
+        Update: {
+          name?: string; emoji?: string; color?: string; description?: string;
+          motto?: string; motto_author?: string; welcome_message?: string;
+          member_limit?: number; challenge_creator?: string; invite_code?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      group_members: {
+        Row: {
+          id: string; group_id: string; user_id: string;
+          role: string; joined_at: string; last_seen_at: string | null; muted: boolean;
+        };
+        Insert: {
+          id?: string; group_id: string; user_id: string;
+          role?: string; joined_at?: string; last_seen_at?: string | null; muted?: boolean;
+        };
+        Update: { role?: string; last_seen_at?: string | null; muted?: boolean; };
+        Relationships: [];
+      };
+      group_challenges: {
+        Row: {
+          id: string; group_id: string; created_by: string; name: string;
+          emoji: string; color: string; habit_type: string; target: string;
+          target_comparison: string; schedule: string; custom_days: number[] | null;
+          start_date: string; end_date: string; created_at: string;
+        };
+        Insert: {
+          id?: string; group_id: string; created_by: string; name: string;
+          emoji?: string; color?: string; habit_type?: string; target?: string;
+          target_comparison?: string; schedule?: string; custom_days?: number[] | null;
+          start_date: string; end_date: string; created_at?: string;
+        };
+        Update: {
+          name?: string; emoji?: string; color?: string; habit_type?: string;
+          target?: string; target_comparison?: string; schedule?: string; custom_days?: number[] | null; end_date?: string;
+        };
+        Relationships: [];
+      };
+      group_challenge_members: {
+        Row: {
+          id: string; challenge_id: string; user_id: string;
+          habit_id: string | null; joined_at: string;
+        };
+        Insert: {
+          id?: string; challenge_id: string; user_id: string;
+          joined_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      group_challenge_checkins: {
+        Row: {
+          id: string; challenge_id: string; user_id: string;
+          date: string; actual: string | null; done: boolean; created_at: string;
+        };
+        Insert: {
+          id?: string; challenge_id: string; user_id: string;
+          date: string; actual?: string | null; done?: boolean; created_at?: string;
+        };
+        Update: { actual?: string | null; done?: boolean; };
+        Relationships: [];
+      };
+      group_reactions: {
+        Row: {
+          id: string; group_id: string; from_user_id: string;
+          entry_id: string; emoji: string; created_at: string;
+        };
+        Insert: {
+          id?: string; group_id: string; from_user_id: string;
+          entry_id: string; emoji: string; created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      group_messages: {
+        Row: {
+          id: string; group_id: string; user_id: string;
+          content: string; is_pinned: boolean; created_at: string;
+        };
+        Insert: {
+          id?: string; group_id: string; user_id: string;
+          content: string; is_pinned?: boolean; created_at?: string;
+        };
+        Update: { is_pinned?: boolean; };
+        Relationships: [];
+      };
+      group_message_reactions: {
+        Row: {
+          id: string; message_id: string; group_id: string;
+          user_id: string; emoji: string; created_at: string;
+        };
+        Insert: {
+          id?: string; message_id: string; group_id: string;
+          user_id: string; emoji: string; created_at?: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [];
+      };
+      group_nudges: {
+        Row: {
+          id: string; group_id: string; from_user_id: string;
+          to_user_id: string; seen: boolean; sent_date: string; created_at: string;
+        };
+        Insert: {
+          id?: string; group_id: string; from_user_id: string;
+          to_user_id: string; seen?: boolean; sent_date: string; created_at?: string;
+        };
+        Update: { seen?: boolean; };
+        Relationships: [];
+      };
+      invite_code_attempts: {
+        Row: {
+          id: string; user_id: string; attempted_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; attempted_at?: string;
+        };
+        Update: Record<string, never>;
         Relationships: [];
       };
     };
