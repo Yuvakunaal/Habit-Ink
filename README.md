@@ -87,7 +87,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 
 ### Landing Page
 
-The first thing unauthenticated visitors see — a fully scrollable marketing page with eight distinct sections and a Google sign-in modal.
+The first thing unauthenticated visitors see — a fully scrollable marketing page with nine distinct sections and a Google sign-in modal.
 
 **Hero** — full-viewport opening with a dot-grid background and a subtle paper-grain SVG texture. An animated three-line headline ("Track habits. / Journal daily. / Free, forever." — each word slides in sequentially with a gold SVG underline drawing on the final line), a floating 3D ink-pen SVG illustration, a live 7-day streak widget animated on load, and three inline trust signals (Lock icon · "100% private" / ShieldCheck icon · "No ads, ever" / CreditCard icon · "No credit card") sourced from Lucide React. A primary **"Start your first day →"** CTA sits below. A sticky header fades in after scrolling 75% of the viewport and mirrors the CTA.
 
@@ -96,6 +96,8 @@ The first thing unauthenticated visitors see — a fully scrollable marketing pa
 **Three Truths** — H2 heading "Daily habit tracker. Built-in journal. Real progress." introduces three hover-reveal cards for the app's core pillars (Track · Journal · Progress) with colour-invert animations on hover.
 
 **Screens in Focus** — three alternating scroll-reveal rows, each pairing a headline and description with a pure-CSS mockup of the corresponding app screen (Today's habit table, the June 2026 calendar heatmap, the weekly progress chart).
+
+**Better Together (Groups)** — full-width navy section (`#2B3A8C` background) with a dot-grid overlay and a central gold glow. Left side: a pure-CSS group mockup card showing a "🏋️ Fitness Club" header with an unread badge, a Today's Pulse row (4 member avatars, 3 green-ringed and 1 pending), a "🏆 7-Day Plank" challenge card with a 75% progress bar, and a two-message mini chat preview. Right side: eyebrow "BETTER TOGETHER" in gold, H2 "Track habits with your crew.", a two-column grid of six feature bullets (create groups, challenges, realtime chat, nudges & cheers, daily pulse, leaderboards), and a gold "✦ Start a group →" CTA button with hover lift/glow. Both sides animate in from opposite sides on scroll. The section uses `id="groups"` so the footer nav can deep-link to it.
 
 **Streak Proof** — 30 animated dots fill in one by one (29 green, 1 missed) under the H2 "Build your longest habit streak yet." Copy reads: "29 out of 30 days. That's not failure. That's dedication."
 
@@ -109,7 +111,7 @@ The first thing unauthenticated visitors see — a fully scrollable marketing pa
 
 After completing Google OAuth the user lands directly on the Today screen. On first login, any data previously stored in browser localStorage is silently migrated to Supabase.
 
-The footer navigation includes: Home · How It Works · Features · FAQ · Blog · Privacy.
+The footer navigation includes: Home · How It Works · Features · Groups · FAQ · Blog · Privacy.
 
 ---
 
@@ -515,7 +517,7 @@ Habit Ink is fully optimised for search engines and installable as a Progressive
 | Heading hierarchy | H1 → H2 → H3 with no gaps; section eyebrows are `<p>` elements — each section has a keyword-rich `<h2>` below |
 | Semantic HTML | `<header>`, `<main>`, `<footer>`, `<nav>`, `<section>`, `<article>` landmarks throughout; blog posts use `<article>` and `<ol>` breadcrumb list |
 | ARIA | `aria-label`, `aria-hidden`, `role="dialog"`, `role="img"`, `aria-current="page"` on breadcrumb throughout |
-| Internal linking | Landing page footer: Home · How It Works · Features · FAQ · Blog · Privacy; Privacy and Blog pages link back to home; blog posts link to related posts and back to blog list |
+| Internal linking | Landing page footer: Home · How It Works · Features · Groups · FAQ · Blog · Privacy; Privacy and Blog pages link back to home; blog posts link to related posts and back to blog list |
 | Referrer policy | `strict-origin-when-cross-origin` |
 | Color scheme | `<meta name="color-scheme" content="light">` |
 
@@ -667,7 +669,7 @@ Journal-Tracker/
         │       ├── mappers.ts         camelCase ↔ snake_case row converters (personal + group tables)
         │       └── types.ts           TypeScript types matching the full DB schema
         ├── screens/
-        │   ├── LandingScreen.tsx      Public landing page (8 sections + Google sign-in modal)
+        │   ├── LandingScreen.tsx      Public landing page (9 sections + Google sign-in modal)
         │   ├── BlogListScreen.tsx     Public blog index (/blog) — featured post + category filter + post grid
         │   ├── BlogPostScreen.tsx     Public blog article (/blog/:slug) — full post with dynamic SEO meta
         │   ├── PrivacyScreen.tsx      Public privacy policy page (accessible without auth)

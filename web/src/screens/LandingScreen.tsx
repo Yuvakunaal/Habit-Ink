@@ -784,6 +784,188 @@ function ChartMockup() {
   );
 }
 
+// ─── GROUPS MOCKUP ────────────────────────────────────────────────────────────
+function GroupMockup() {
+  return (
+    <div style={{
+      backgroundColor: "#fff", border: `1px solid ${BORDER}`, borderRadius: 22,
+      padding: "20px 20px", width: 268, flexShrink: 0,
+      boxShadow: "0 18px 56px rgba(43,58,140,0.22), 0 4px 16px rgba(0,0,0,0.08)",
+      transform: "rotate(-2.5deg)",
+    }} role="img" aria-label="Groups feature mockup — Fitness Club with pulse, challenge, and chat">
+
+      {/* Group header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${NAVY}14`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }} aria-hidden="true">🏋️</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ ...CAVEAT, fontSize: 18, fontWeight: 700, color: NAVY, margin: 0, lineHeight: 1.1 }}>Fitness Club</p>
+          <p style={{ ...INTER, fontSize: 10, color: MUTED, margin: 0 }}>4 members · 2 challenges</p>
+        </div>
+        <div style={{ backgroundColor: "#FEE2E2", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }} aria-hidden="true">
+          <span style={{ ...INTER, fontSize: 9, fontWeight: 700, color: "#DC2626" }}>● 2</span>
+        </div>
+      </div>
+
+      {/* Today's Pulse */}
+      <p style={{ ...INTER, fontSize: 9, fontWeight: 700, color: MUTED, textTransform: "uppercase", letterSpacing: "0.13em", margin: "0 0 8px" }} aria-hidden="true">Today's Pulse</p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }} aria-hidden="true">
+        {[
+          { emoji: "💪", done: true  },
+          { emoji: "🏃", done: true  },
+          { emoji: "🧘", done: true  },
+          { emoji: "🌟", done: false },
+        ].map((m, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%",
+              backgroundColor: m.done ? `${GREEN}18` : "#F5F5F5",
+              border: `2.5px solid ${m.done ? GREEN : BORDER}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 17,
+            }}>{m.emoji}</div>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: m.done ? GREEN : "#D5D0C8", boxShadow: m.done ? `0 0 0 2px ${GREEN}28` : "none" }} />
+          </div>
+        ))}
+      </div>
+
+      {/* Challenge card */}
+      <div style={{ backgroundColor: `${NAVY}07`, border: `1px solid ${BORDER}`, borderRadius: 12, padding: "10px 12px", marginBottom: 12 }} aria-hidden="true">
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
+          <span style={{ fontSize: 14 }}>🏆</span>
+          <span style={{ ...INTER, fontSize: 12, fontWeight: 600, color: NAVY }}>7-Day Plank</span>
+          <span style={{ ...INTER, fontSize: 10, color: MUTED, marginLeft: "auto" }}>3/4 done</span>
+        </div>
+        <div style={{ height: 5, backgroundColor: BORDER, borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: "75%", background: `linear-gradient(90deg, ${GREEN}, #2D9A5E)`, borderRadius: 4 }} />
+        </div>
+      </div>
+
+      {/* Chat mini-preview */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }} aria-hidden="true">
+        <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
+          <div style={{ width: 24, height: 24, borderRadius: "50%", backgroundColor: `${NAVY}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>💪</div>
+          <div style={{ backgroundColor: "#EEF2FF", borderRadius: "10px 10px 10px 2px", padding: "6px 10px" }}>
+            <p style={{ ...INTER, fontSize: 10, color: TEXT, margin: 0 }}>Done! 🔥 Day 5 streak!</p>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "flex-end", justifyContent: "flex-end" }}>
+          <div style={{ backgroundColor: NAVY, borderRadius: "10px 10px 2px 10px", padding: "6px 10px" }}>
+            <p style={{ ...INTER, fontSize: 10, color: "#fff", margin: 0 }}>Let's gooo 💯🔥</p>
+          </div>
+          <div style={{ width: 24, height: 24, borderRadius: "50%", backgroundColor: `${GOLD}28`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🌟</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SOCIAL SECTION ───────────────────────────────────────────────────────────
+const GROUP_FEATURES = [
+  { emoji: "👥", text: "Create or join accountability groups" },
+  { emoji: "🏆", text: "Run shared habit challenges" },
+  { emoji: "💬", text: "Realtime group chat" },
+  { emoji: "💪", text: "Send nudges & cheer teammates" },
+  { emoji: "📊", text: "See who checked in today" },
+  { emoji: "🔥", text: "Weekly leaderboards & digests" },
+] as const;
+
+function SocialSection({ onOpenModal }: { onOpenModal: () => void }) {
+  const isMobile = useIsMobile();
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, 0.15);
+  const [btnHover, setBtnHover] = useState(false);
+
+  return (
+    <section
+      id="groups"
+      aria-label="Habit Ink Groups — build habits with friends and accountability partners"
+      style={{
+        backgroundColor: NAVY,
+        padding: isMobile ? "80px 24px" : "108px 56px",
+        overflow: "hidden",
+        position: "relative",
+      }}
+    >
+      {/* Dot grid on dark */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.055, backgroundImage: `radial-gradient(circle, ${BG} 1px, transparent 1px)`, backgroundSize: "30px 30px" }} aria-hidden="true" />
+      {/* Central warm glow */}
+      <div aria-hidden="true" style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,168,76,0.09) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      <div
+        ref={ref}
+        style={{
+          maxWidth: 1040, margin: "0 auto", position: "relative",
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: "center",
+          gap: isMobile ? 52 : 88,
+        }}
+      >
+        {/* ── Mockup ── */}
+        <div style={{
+          flexShrink: 0,
+          opacity: inView ? 1 : 0,
+          transform: inView ? "translateX(0) translateY(0)" : "translateX(-56px) translateY(10px)",
+          transition: "opacity 0.65s ease, transform 0.65s cubic-bezier(0.22,1,0.36,1)",
+          order: isMobile ? 2 : 1,
+        }}>
+          <GroupMockup />
+        </div>
+
+        {/* ── Text ── */}
+        <div style={{
+          flex: 1, minWidth: 0,
+          opacity: inView ? 1 : 0,
+          transform: inView ? "translateX(0)" : "translateX(56px)",
+          transition: "opacity 0.65s ease 110ms, transform 0.65s cubic-bezier(0.22,1,0.36,1) 110ms",
+          order: isMobile ? 1 : 2,
+        }}>
+          <p style={{ ...INTER, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: GOLD, textTransform: "uppercase", margin: "0 0 14px" }}>
+            BETTER TOGETHER
+          </p>
+          <h2 style={{ ...CAVEAT, fontWeight: 700, fontSize: isMobile ? 42 : 56, color: BG, margin: "0 0 20px", lineHeight: 1.1 }}>
+            Track habits with your crew.
+          </h2>
+          <p style={{ ...INTER, fontSize: 16, color: "rgba(250,248,243,0.68)", lineHeight: 1.78, margin: "0 0 36px", maxWidth: 420 }}>
+            Create a group, invite your friends, and hold each other accountable — with shared challenges, a live activity feed, realtime chat, and daily pulse checks.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px", marginBottom: 40 }}>
+            {GROUP_FEATURES.map((f, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: 9,
+                opacity: inView ? 1 : 0,
+                transform: inView ? "translateY(0)" : "translateY(14px)",
+                transition: `opacity 0.45s ease ${180 + i * 65}ms, transform 0.45s ease ${180 + i * 65}ms`,
+              }}>
+                <span style={{ fontSize: 17, flexShrink: 0 }} aria-hidden="true">{f.emoji}</span>
+                <span style={{ ...INTER, fontSize: 13, color: "rgba(250,248,243,0.78)", fontWeight: 500, lineHeight: 1.4 }}>{f.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={onOpenModal}
+            onMouseEnter={() => setBtnHover(true)}
+            onMouseLeave={() => setBtnHover(false)}
+            aria-label="Start a group — sign in with Google for free"
+            style={{
+              ...CAVEAT, fontSize: 20, fontWeight: 700, color: DARK,
+              backgroundColor: GOLD, border: "none", borderRadius: 14,
+              padding: "15px 34px", cursor: "pointer", letterSpacing: "0.01em",
+              boxShadow: btnHover ? "0 14px 40px rgba(201,168,76,0.55)" : "0 4px 20px rgba(201,168,76,0.28)",
+              transform: btnHover ? "scale(1.04) translateY(-2px)" : "scale(1) translateY(0)",
+              transition: "all 0.24s cubic-bezier(0.34,1.56,0.64,1)",
+            }}
+          >
+            ✦&nbsp;&nbsp;Start a group →
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── SCREENS IN FOCUS ─────────────────────────────────────────────────────────
 function ScreenText({ headline, body }: { headline: string; body: string }) {
   return (
@@ -1113,6 +1295,7 @@ function DarkClose({ onOpenModal }: { onOpenModal: () => void }) {
           { href: "#home",           label: "Home" },
           { href: "#how-it-works",   label: "How It Works" },
           { href: "#features",       label: "Features" },
+          { href: "#groups",         label: "Groups" },
           { href: "#faq",            label: "FAQ" },
           { href: "/blog",           label: "Blog" },
           { href: "/privacy",        label: "Privacy" },
@@ -1185,10 +1368,11 @@ export default function LandingScreen() {
       {modalOpen && <GoogleSignInModal onClose={closeModal} onSignIn={signIn} />}
       <StickyHeader onOpenModal={openModal} />
       <main id="main-content">
-        <Hero        onOpenModal={openModal} />
+        <Hero          onOpenModal={openModal} />
         <HowItWorks />
         <ThreeTruths />
         <ScreensInFocus />
+        <SocialSection onOpenModal={openModal} />
         <StreakProof />
         <QuoteMoment />
         <FAQSection />
