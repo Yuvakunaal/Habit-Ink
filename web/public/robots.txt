@@ -13,4 +13,4 @@ Disallow: /settings
 Disallow: /groups
 Disallow: /join
 
-Sitemap: https://habitink.app/sitemap.xml
+Sitemap: https://habitink.vercel.app/sitemap.xml
