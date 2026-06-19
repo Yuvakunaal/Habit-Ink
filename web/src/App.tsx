@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, Outlet } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 
 import { HabitProvider } from "@/context/HabitContext";
 import { SettingsProvider } from "@/context/SettingsContext";
@@ -133,6 +134,7 @@ export function App() {
                   </AuthGate>
                 } />
               </Routes>
+              <Analytics />
             </HabitProvider>
           </ToastProvider>
         </SettingsProvider>
