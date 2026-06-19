@@ -187,7 +187,7 @@ export default function PrivacyScreen() {
     // Point canonical at /privacy (index.html defaults to /)
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     const prevCanonical = canonical?.getAttribute("href") ?? null;
-    canonical?.setAttribute("href", "https://habitink.app/privacy");
+    canonical?.setAttribute("href", `${window.location.origin}/privacy`);
 
     // Inject BreadcrumbList schema
     const crumb = document.createElement("script");
@@ -197,8 +197,8 @@ export default function PrivacyScreen() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home",           "item": "https://habitink.app/" },
-        { "@type": "ListItem", "position": 2, "name": "Privacy Policy", "item": "https://habitink.app/privacy" },
+        { "@type": "ListItem", "position": 1, "name": "Home",           "item": `${window.location.origin}/` },
+        { "@type": "ListItem", "position": 2, "name": "Privacy Policy", "item": `${window.location.origin}/privacy` },
       ],
     });
     document.head.appendChild(crumb);

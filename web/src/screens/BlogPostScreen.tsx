@@ -93,7 +93,7 @@ export default function BlogPostScreen() {
     // Canonical
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     const prevCanonical = canonical?.getAttribute("href") ?? null;
-    canonical?.setAttribute("href", `https://habitink.app/blog/${post.slug}`);
+    canonical?.setAttribute("href", `${window.location.origin}/blog/${post.slug}`);
 
     // OG tags
     const ogTitle = document.querySelector<HTMLMetaElement>('meta[property="og:title"]');
@@ -106,7 +106,7 @@ export default function BlogPostScreen() {
 
     const ogUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
     const prevOgUrl = ogUrl?.getAttribute("content") ?? null;
-    ogUrl?.setAttribute("content", `https://habitink.app/blog/${post.slug}`);
+    ogUrl?.setAttribute("content", `${window.location.origin}/blog/${post.slug}`);
 
     // Twitter Card tags
     const twTitle = document.querySelector<HTMLMetaElement>('meta[name="twitter:title"]');
@@ -131,15 +131,15 @@ export default function BlogPostScreen() {
       "author": {
         "@type": "Organization",
         "name": "Habit Ink",
-        "url": "https://habitink.app",
+        "url": window.location.origin,
       },
       "publisher": {
         "@type": "Organization",
         "name": "Habit Ink",
-        "logo": { "@type": "ImageObject", "url": "https://habitink.app/logo.png" },
+        "logo": { "@type": "ImageObject", "url": `${window.location.origin}/logo.png` },
       },
-      "url": `https://habitink.app/blog/${post.slug}`,
-      "mainEntityOfPage": `https://habitink.app/blog/${post.slug}`,
+      "url": `${window.location.origin}/blog/${post.slug}`,
+      "mainEntityOfPage": `${window.location.origin}/blog/${post.slug}`,
       "keywords": post.keywords?.join(", "),
       "articleSection": post.category,
       "inLanguage": "en-US",
@@ -154,9 +154,9 @@ export default function BlogPostScreen() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home",  "item": "https://habitink.app/" },
-        { "@type": "ListItem", "position": 2, "name": "Blog",  "item": "https://habitink.app/blog" },
-        { "@type": "ListItem", "position": 3, "name": post.title, "item": `https://habitink.app/blog/${post.slug}` },
+        { "@type": "ListItem", "position": 1, "name": "Home",  "item": `${window.location.origin}/` },
+        { "@type": "ListItem", "position": 2, "name": "Blog",  "item": `${window.location.origin}/blog` },
+        { "@type": "ListItem", "position": 3, "name": post.title, "item": `${window.location.origin}/blog/${post.slug}` },
       ],
     });
     document.head.appendChild(crumb);

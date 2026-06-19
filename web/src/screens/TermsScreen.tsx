@@ -180,7 +180,7 @@ export default function TermsScreen() {
 
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     const prevCanonical = canonical?.getAttribute("href") ?? null;
-    canonical?.setAttribute("href", "https://habitink.app/terms");
+    canonical?.setAttribute("href", `${window.location.origin}/terms`);
 
     const crumb = document.createElement("script");
     crumb.type = "application/ld+json";
@@ -189,8 +189,8 @@ export default function TermsScreen() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home",             "item": "https://habitink.app/" },
-        { "@type": "ListItem", "position": 2, "name": "Terms of Service", "item": "https://habitink.app/terms" },
+        { "@type": "ListItem", "position": 1, "name": "Home",             "item": `${window.location.origin}/` },
+        { "@type": "ListItem", "position": 2, "name": "Terms of Service", "item": `${window.location.origin}/terms` },
       ],
     });
     document.head.appendChild(crumb);
