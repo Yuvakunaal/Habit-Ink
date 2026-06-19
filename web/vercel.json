@@ -1,18 +1,8 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "routes": [
-    {
-      "src": "/sitemap.xml",
-      "headers": { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=86400" },
-      "dest": "/sitemap.xml"
-    },
-    {
-      "src": "/robots.txt",
-      "headers": { "Content-Type": "text/plain; charset=utf-8" },
-      "dest": "/robots.txt"
-    },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
