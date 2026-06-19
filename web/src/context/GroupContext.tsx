@@ -33,8 +33,8 @@ const MAX_CHALLENGES_PER_GROUP = 15;
 const MAX_GROUPS_CREATED_PER_USER = 10;
 // Matches the `group_messages_content_length` DB check constraint — keep both in sync.
 export const MAX_MESSAGE_LENGTH = 2000;
-// Sliding-window cap: oldest message is auto-deleted from DB when the 101st arrives.
-export const MAX_CHAT_MESSAGES = 100;
+// Sliding-window cap: oldest message is auto-deleted from DB when the 201st arrives.
+export const MAX_CHAT_MESSAGES = 200;
 
 function generateInviteCode(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();

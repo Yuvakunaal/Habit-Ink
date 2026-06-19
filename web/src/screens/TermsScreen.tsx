@@ -12,198 +12,189 @@ const INTER:  React.CSSProperties = { fontFamily: '"Inter", system-ui, sans-seri
 
 const SECTIONS = [
   {
-    title: "1. Information We Collect",
+    title: "1. Acceptance of Terms",
     content: [
       {
-        subtitle: "When you sign in with Google, we receive:",
+        subtitle: "By using Habit Ink, you agree to these Terms:",
         items: [
-          "Your name and email address from your Google account",
-          "A unique identifier (Google user ID) to link your account",
-        ],
-      },
-      {
-        subtitle: "Within the app, you create and we store:",
-        items: [
-          "Your habits — names, emojis, schedules, targets, and completion history",
-          "Your daily journal entries — intentions, notes, wins, and challenges",
-          "Your app preferences — theme, font, notification settings",
-          "Your habit order and any custom settings you configure",
-          "Wake-up times, if you choose to log them",
-        ],
-      },
-      {
-        subtitle: "We do not collect:",
-        items: [
-          "Payment information of any kind",
-          "Device identifiers, IP addresses, or location data",
-          "Any data you do not explicitly provide inside the app",
+          "By accessing or using Habit Ink, you agree to be bound by these Terms of Service",
+          "If you do not agree to these Terms, please do not use the app",
+          "We may update these Terms from time to time — continued use after changes means acceptance",
+          "These Terms apply to all users of Habit Ink, including visitors and registered users",
         ],
       },
     ],
   },
   {
-    title: "2. How We Use Your Information",
+    title: "2. Your Account",
     content: [
       {
-        subtitle: "Your data is used solely to:",
+        subtitle: "Account responsibilities:",
         items: [
-          "Identify your account and securely sync your data across devices",
-          "Display your habits, journal entries, streaks, and progress",
-          "Calculate statistics like completion rates and streak lengths",
-          "Restore your preferences when you return to the app",
-        ],
-      },
-      {
-        subtitle: "We never:",
-        items: [
-          "Use your data for advertising or marketing",
-          "Sell, rent, or share your data with third parties",
-          "Use your journal entries to train AI or machine learning models",
-          "Read your personal journal entries — they belong to you",
+          "You must sign in with a valid Google account to use Habit Ink's core features",
+          "You are responsible for maintaining the security of your Google account",
+          "You must not use another person's account or share your account with others",
+          "You must be at least 13 years old to create an account",
+          "You are responsible for all activity that occurs under your account",
         ],
       },
     ],
   },
   {
-    title: "3. Data Storage & Security",
+    title: "3. Acceptable Use",
     content: [
       {
-        subtitle: "Your data is stored securely using industry-standard practices:",
+        subtitle: "You agree to use Habit Ink only for lawful purposes:",
         items: [
-          "All data is stored in a PostgreSQL database hosted by Supabase",
-          "Row-Level Security (RLS) ensures each user can only access their own data",
-          "All data is transmitted over HTTPS — never in plain text",
-          "Authentication tokens are stored in your browser's secure session storage",
-          "We do not store passwords — authentication is handled entirely by Google",
+          "Do not attempt to gain unauthorized access to any part of the service or its infrastructure",
+          "Do not use the service to transmit harmful, offensive, or illegal content",
+          "Do not attempt to reverse-engineer, scrape, or copy the service",
+          "Do not use automated tools to access or interact with the service without permission",
+          "Do not abuse the Groups feature to spam, harass, or harm other users",
+        ],
+      },
+      {
+        subtitle: "Content you create:",
+        items: [
+          "Your habit names, journal entries, and group messages are your own content",
+          "You retain ownership of content you create — we do not claim any rights to it",
+          "You are responsible for ensuring the content you create does not violate any laws",
+          "We do not monitor or moderate personal journal entries — they are private to you",
         ],
       },
     ],
   },
   {
-    title: "4. Third-Party Services",
+    title: "4. The Service",
     content: [
       {
-        subtitle: "Google Sign-In (OAuth 2.0)",
+        subtitle: "What Habit Ink provides:",
         items: [
-          "We use Google Sign-In for authentication only",
-          "We receive your name and email — nothing else",
-          "Google's Privacy Policy governs the sign-in process",
-          "You can revoke Habit Ink's access at any time in your Google account settings",
+          "A free personal habit tracking and journaling application",
+          "Optional social features including Groups, Challenges, Chat, and Nudges",
+          "Data synced securely across your devices via your Google account",
+          "The service is provided 'as-is' — we do not guarantee uninterrupted availability",
         ],
       },
       {
-        subtitle: "Supabase",
+        subtitle: "Service changes:",
         items: [
-          "We use Supabase for secure database storage and session management",
-          "Your habit and journal data is stored on Supabase infrastructure",
-          "Supabase is SOC 2 compliant and uses AES-256 encryption at rest",
-          "Supabase's Privacy Policy applies to data storage",
-        ],
-      },
-      {
-        subtitle: "We do not use:",
-        items: [
-          "Google Analytics, Meta Pixel, or any advertising trackers",
-          "Third-party cookie services",
-          "Any data brokers or data sharing platforms",
+          "We reserve the right to modify, suspend, or discontinue any part of the service",
+          "We will make reasonable efforts to notify users of significant changes",
+          "We are not liable to you or any third party for any modification or discontinuation",
         ],
       },
     ],
   },
   {
-    title: "5. Your Rights & Data Control",
+    title: "5. Free Forever Policy",
     content: [
       {
-        subtitle: "You are in full control of your data:",
+        subtitle: "Habit Ink is and will remain free to use:",
         items: [
-          "View all your data at any time inside the app",
-          "Delete individual habits, journal entries, or history entries in-app",
-          "Request a full export or complete deletion of your account and all data by emailing us",
-          "Revoke Google access at any time through your Google Account settings — this signs you out of Habit Ink",
+          "There are no paid plans, premium tiers, or subscription fees",
+          "We will never charge for features that are currently free",
+          "If we ever introduce optional paid features in the future, all current features will remain free",
+          "We do not monetize your data — your information is never sold or shared for profit",
         ],
       },
     ],
   },
   {
-    title: "6. Cookies & Local Storage",
+    title: "6. Groups & Social Features",
     content: [
       {
-        subtitle: "We use minimal browser storage:",
+        subtitle: "When using Groups, Challenges, and Chat:",
         items: [
-          "Browser localStorage/sessionStorage to maintain your sign-in session",
-          "No tracking cookies, advertising cookies, or third-party cookies",
-          "No fingerprinting or cross-site tracking of any kind",
+          "You are responsible for the content you post in group chats and feeds",
+          "Group admins have the right to remove members and manage group settings",
+          "Do not use group features to harass, bully, or intimidate other members",
+          "We reserve the right to remove groups or users that violate these Terms",
+          "Group chat history may be limited — older messages may be automatically removed",
         ],
       },
     ],
   },
   {
-    title: "7. Children's Privacy",
+    title: "7. Intellectual Property",
     content: [
       {
-        subtitle: "Age requirements:",
+        subtitle: "Ownership of Habit Ink:",
         items: [
-          "Habit Ink is not directed at children under the age of 13",
-          "We do not knowingly collect data from children under 13",
-          "If you believe a child has provided us data, please contact us for immediate deletion",
+          "Habit Ink, its design, code, branding, and content are owned by the developer",
+          "The Habit Ink name, logo, and visual design are not licensed for external use",
+          "You may not copy, reproduce, or redistribute any part of the service without permission",
+          "Feedback and suggestions you provide may be used to improve the service without obligation",
         ],
       },
     ],
   },
   {
-    title: "8. Changes to This Policy",
+    title: "8. Disclaimers & Limitation of Liability",
     content: [
       {
-        subtitle: "Policy updates:",
+        subtitle: "Important limitations:",
         items: [
-          "We may update this Privacy Policy from time to time",
-          "Significant changes will be reflected in the 'Last updated' date at the top of this page",
-          "Continued use of Habit Ink after changes constitutes acceptance of the updated policy",
-          "We will never make changes that reduce your privacy rights without clear notice",
+          "Habit Ink is provided 'as-is' without warranties of any kind, express or implied",
+          "We are not responsible for any loss of data, missed habits, or personal harm arising from use",
+          "We are not liable for any indirect, incidental, or consequential damages",
+          "Habit Ink is a personal productivity tool — it is not a medical or therapeutic service",
+          "Our total liability to you for any claims is limited to the amount you paid us (which is zero)",
         ],
       },
     ],
   },
   {
-    title: "9. Contact Us",
+    title: "9. Termination",
     content: [
       {
-        subtitle: "Questions, data requests, or deletion requests:",
+        subtitle: "Account termination:",
+        items: [
+          "You may stop using Habit Ink at any time by signing out and revoking Google access",
+          "You may request full account and data deletion by emailing us",
+          "We reserve the right to suspend or terminate accounts that violate these Terms",
+          "Upon termination, your data will be deleted in accordance with our Privacy Policy",
+        ],
+      },
+    ],
+  },
+  {
+    title: "10. Contact Us",
+    content: [
+      {
+        subtitle: "Questions about these Terms:",
         items: [
           "Email: yuvakunaal@gmail.com",
-          "We aim to respond within 48 hours",
-          "For data deletion requests, we will confirm and complete deletion within 30 days",
+          "We aim to respond to all inquiries within 48 hours",
+          "For account deletion requests, we will confirm and complete deletion within 30 days",
         ],
       },
     ],
   },
 ];
 
-export default function PrivacyScreen() {
+export default function TermsScreen() {
   useEffect(() => {
-    document.title = "Privacy Policy — Habit Ink";
+    document.title = "Terms of Service — Habit Ink";
     window.scrollTo(0, 0);
 
-    // Point canonical at /privacy (index.html defaults to /)
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
     const prevCanonical = canonical?.getAttribute("href") ?? null;
-    canonical?.setAttribute("href", "https://habitink.app/privacy");
+    canonical?.setAttribute("href", "https://habitink.app/terms");
 
-    // Inject BreadcrumbList schema
     const crumb = document.createElement("script");
     crumb.type = "application/ld+json";
-    crumb.id   = "privacy-breadcrumb-schema";
+    crumb.id = "terms-breadcrumb-schema";
     crumb.textContent = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home",           "item": "https://habitink.app/" },
-        { "@type": "ListItem", "position": 2, "name": "Privacy Policy", "item": "https://habitink.app/privacy" },
+        { "@type": "ListItem", "position": 1, "name": "Home",             "item": "https://habitink.app/" },
+        { "@type": "ListItem", "position": 2, "name": "Terms of Service", "item": "https://habitink.app/terms" },
       ],
     });
     document.head.appendChild(crumb);
 
-    // Unlock scroll for this page
     const html = document.documentElement;
     const body = document.body;
     const root = document.getElementById("root");
@@ -218,7 +209,7 @@ export default function PrivacyScreen() {
 
     return () => {
       if (canonical && prevCanonical) canonical.setAttribute("href", prevCanonical);
-      document.getElementById("privacy-breadcrumb-schema")?.remove();
+      document.getElementById("terms-breadcrumb-schema")?.remove();
       html.style.overflow = prev.htmlO; html.style.height = prev.htmlH;
       body.style.overflow = prev.bodyO; body.style.height = prev.bodyH;
       if (root) { root.style.overflow = prev.rootO; root.style.height = prev.rootH; }
@@ -268,31 +259,30 @@ export default function PrivacyScreen() {
             borderRadius: 100, padding: "4px 14px", marginBottom: 20,
           }}>
             <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.14em", color: NAVY, textTransform: "uppercase" as const }}>
-              Legal · Privacy
+              Legal · Terms
             </span>
           </div>
 
           <h1 style={{ ...CAVEAT, fontSize: 56, fontWeight: 700, color: NAVY, margin: "0 0 12px", lineHeight: 1.1 }}>
-            Privacy Policy
+            Terms of Service
           </h1>
           <p style={{ fontSize: 15, color: MUTED, margin: "0 0 8px" }}>
-            <strong style={{ color: TEXT }}>Last updated:</strong> June 15, 2026
+            <strong style={{ color: TEXT }}>Last updated:</strong> June 19, 2026
           </p>
           <p style={{ fontSize: 16, color: TEXT, lineHeight: 1.75, margin: 0, maxWidth: 640 }}>
-            Habit Ink is built on a simple principle: <strong>your data is yours</strong>. We
-            collect only what's needed to run the app, we never sell it, and we never use it
-            for advertising. This policy explains exactly what we collect, how it's stored,
-            and how you can control it.
+            These Terms of Service govern your use of Habit Ink. By signing in and using the app,
+            you agree to these terms. We've written them to be clear and human-readable — not
+            legalese. If something isn't clear, just email us.
           </p>
         </div>
 
         {/* Quick summary cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 52 }}>
           {[
-            { emoji: "🔒", title: "100% Private", desc: "Your journal entries are never read or shared" },
-            { emoji: "🚫", title: "No Ads Ever",  desc: "We don't run ads or use advertising trackers" },
-            { emoji: "🆓", title: "Free Forever", desc: "No payments, no credit card, no hidden costs" },
-            { emoji: "✉️", title: "You're in Control", desc: "Request full data export or deletion anytime" },
+            { emoji: "🆓", title: "Free Forever",    desc: "No paid plans, no hidden fees — ever" },
+            { emoji: "📝", title: "Your Content",    desc: "You own everything you write in the app" },
+            { emoji: "🤝", title: "Be Respectful",   desc: "Use Groups and Chat kindly and honestly" },
+            { emoji: "✉️", title: "Easy to Leave",   desc: "Delete your account and data any time" },
           ].map((card, i) => (
             <div key={i} style={{
               backgroundColor: "#fff",
@@ -310,7 +300,7 @@ export default function PrivacyScreen() {
           ))}
         </div>
 
-        {/* Policy sections */}
+        {/* Terms sections */}
         <div style={{ display: "flex", flexDirection: "column" as const, gap: 44 }}>
           {SECTIONS.map((section, si) => (
             <section
@@ -371,7 +361,7 @@ export default function PrivacyScreen() {
             We're here to help.
           </h2>
           <p style={{ ...INTER, fontSize: 15, color: "rgba(250,248,243,0.65)", margin: "0 0 24px", lineHeight: 1.6 }}>
-            Email us about your data, request a deletion, or just say hello.
+            Reach out with any questions about these Terms or your account.
           </p>
           <a
             href="mailto:yuvakunaal@gmail.com"

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { CompletionRing } from "@/components/CompletionRing";
 import { MonthHeatmap } from "@/components/MonthHeatmap";
 import { WeeklyChart } from "@/components/WeeklyChart";
@@ -126,6 +127,7 @@ export default function ProgressScreen() {
   const font = useFont();
   const { habits, entries, getCompletionForDate } = useHabits();
   const isWide = useIsWide();
+  const navigate = useNavigate();
 
   // All stat computation is memoized — only re-runs when habits or entries change
   const stats = useMemo(() => {
@@ -307,14 +309,49 @@ export default function ProgressScreen() {
       <div className="page-enter" style={{ flex: 1, backgroundColor: colors.background, display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ paddingLeft: isWide ? 28 : 16, paddingRight: isWide ? 28 : 16, paddingTop: 18, paddingBottom: 14, borderBottom: `1px solid ${colors.line}`, flexShrink: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
           <span style={{ ...font.heading, fontSize: font.size(28), color: colors.primary }}>Progress</span>
-          <RefreshButton />
         </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32 }}>
-          <span style={{ fontSize: 48, marginBottom: 12 }}>📊</span>
-          <p style={{ ...font.heading, fontSize: font.size(22), color: colors.foreground, marginTop: 4 }}>No habits yet</p>
-          <p style={{ ...font.body, fontSize: font.size(16), color: colors.mutedForeground, textAlign: "center", marginTop: 6, lineHeight: 1.5 }}>
-            Add some habits to start tracking your progress.
+        <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px" }}>
+          <span style={{ fontSize: 52, marginBottom: 16 }}>📈</span>
+          <p style={{ ...font.heading, fontSize: font.size(24), color: colors.foreground, margin: "0 0 8px", textAlign: "center" }}>
+            Your progress story starts here
           </p>
+          <p style={{ ...font.body, fontSize: font.size(15), color: colors.mutedForeground, textAlign: "center", lineHeight: 1.65, margin: "0 0 28px", maxWidth: 320 }}>
+            Once you add habits and start tracking, you'll see streaks, charts, and insights right here.
+          </p>
+          {/* Preview cards */}
+          <div style={{ display: "flex", flexDirection: isWide ? "row" : "column", gap: 10, width: "100%", maxWidth: 420, marginBottom: 28 }}>
+            {[
+              { emoji: "🔥", label: "Daily streaks",      desc: "See how many days in a row you've kept going" },
+              { emoji: "📊", label: "Weekly charts",      desc: "Visualise your completion rate over the past 7 days" },
+              { emoji: "💡", label: "Smart insights",     desc: "Discover your best day of the week and top habit" },
+            ].map((card, i) => (
+              <div key={i} style={{
+                flex: 1, padding: "14px 16px", borderRadius: 14,
+                border: `1px solid ${colors.border}`,
+                backgroundColor: colors.card,
+                display: "flex", flexDirection: isWide ? "column" : "row",
+                alignItems: isWide ? "center" : "flex-start",
+                gap: 10,
+              }}>
+                <span style={{ fontSize: 24 }}>{card.emoji}</span>
+                <div style={{ textAlign: isWide ? "center" : "left" }}>
+                  <p style={{ ...font.label, fontSize: font.size(13), color: colors.foreground, margin: "0 0 2px" }}>{card.label}</p>
+                  <p style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, margin: 0, lineHeight: 1.4 }}>{card.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate("/habits")}
+            style={{
+              ...font.label, fontSize: font.size(15), fontWeight: 600,
+              color: colors.primaryForeground, backgroundColor: colors.primary,
+              border: "none", borderRadius: 12,
+              padding: "13px 32px", cursor: "pointer",
+            }}
+          >
+            Add your first habit →
+          </button>
         </div>
       </div>
     );

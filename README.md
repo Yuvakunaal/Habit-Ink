@@ -38,6 +38,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
   - [Group Detail](#group-detail)
   - [Join Group](#join-group)
   - [Privacy Policy](#privacy-policy)
+  - [Terms of Service](#terms-of-service)
   - [404 — Not Found](#404--not-found)
 - [Themes](#themes)
 - [Responsive Design](#responsive-design)
@@ -80,6 +81,8 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | 💪 | **Nudges** | Send a motivational nudge to any group member who hasn't checked in today — they receive a live toast notification (suppressed if the group is muted) |
 | 🎉 | **Cheers** | Tap a completed member's pulse avatar to send a 🔥 reaction to their latest feed entry — positive reinforcement, one tap |
 | 🔍 | **Chat Search** | Filter the 100-message chat history by keyword inline — results narrow live, cleared automatically when leaving the Chat tab |
+| 🎓 | **Onboarding** | Three-step first-login wizard: pick habit categories, choose from 18 curated habit templates across 6 categories, then pick a theme — all steps skippable |
+| 📥 | **Data Export** | Download all habits and journal entries as a single UTF-8 CSV (Excel-ready, BOM-prefixed) from Settings — one row per day from app start to today |
 
 ---
 
@@ -111,7 +114,7 @@ The first thing unauthenticated visitors see — a fully scrollable marketing pa
 
 After completing Google OAuth the user lands directly on the Today screen. On first login, any data previously stored in browser localStorage is silently migrated to Supabase.
 
-The footer navigation includes: Home · How It Works · Features · Groups · FAQ · Blog · Privacy.
+The footer navigation includes: Home · How It Works · Features · Groups · FAQ · Blog · Privacy · Terms.
 
 ---
 
@@ -243,11 +246,13 @@ Your current day number sits quietly below your name as a progress marker.
 
 Where the app becomes yours.
 
-**Theme** · **Font Style** · **Text Size** · **Daily Quote** · **Account** · **Reset**
+**Theme** · **Font Style** · **Text Size** · **Daily Quote** · **Export Data** · **Account** · **Reset**
 
 Five themes, two fonts, three text sizes, and the option to pin your own quote to the Today screen. Every change is instant, global, and synced to the cloud.
 
 The **Account** section shows your Google profile photo, full name, and email address. Clicking **Sign Out** opens a themed confirmation dialog (bottom sheet on mobile, centered modal on desktop) showing your account details before logging you out cleanly.
+
+**Export Data** — a **"Download All Data (CSV)"** button in the Account section exports every habit and journal entry as a single UTF-8 CSV file (BOM-prefixed so Excel handles emojis correctly). Each row is one calendar day from your app start date to today; columns are: Date, Day #, Wake-up, Intention, Notes, Wins, Challenges, and one column per habit (showing the actual value logged, or "done" / "missed" / blank). The button transitions through idle → "Preparing export…" → "✓ Export downloaded" states, with a success toast on completion.
 
 **Reset to Defaults** uses an **inline confirmation panel** that expands in place — no overlay, no browser dialog. It clearly states that only appearance settings (theme, font, quote) will be reset; your habit data and journal entries are untouched. Pressing nothing for 4 seconds auto-cancels the confirmation.
 
@@ -368,7 +373,19 @@ A brand-styled public page at `/privacy` — accessible without signing in, link
 
 Nine sections cover exactly what is collected (Google profile basics + in-app content you write), how it is stored (Supabase Postgres with Row Level Security), third-party services (Google OAuth and Supabase only — no advertising trackers, no analytics), user rights (view, export, delete), cookies (session storage only), and contact details for data requests.
 
-The page uses the same navy / gold / cream palette and Caveat headings as the rest of the app. A sticky header with a back-to-home link and a footer nav (Home · Blog · How It Works · Features) keep it connected to the site. Four summary cards at the top (100% Private · No Ads Ever · Free Forever · You're in Control) give returning users a quick-scan overview without reading the full policy.
+The page uses the same navy / gold / cream palette and Caveat headings as the rest of the app. A sticky header with a back-to-home link and a footer nav (Home · Blog · Privacy Policy · Terms of Service) keep it connected to the site. Four summary cards at the top (100% Private · No Ads Ever · Free Forever · You're in Control) give returning users a quick-scan overview without reading the full policy.
+
+---
+
+### Terms of Service
+
+A brand-styled public page at `/terms` — accessible without signing in, linked from the landing page and privacy page footers.
+
+Ten sections cover acceptance of terms, account responsibilities (Google sign-in required, 13+ age minimum), acceptable use (no abuse of Groups/Chat, no scraping), what the service provides, the free-forever policy (no paid tiers, no data monetisation), group and social feature rules, intellectual property, disclaimers and liability limits, termination / account deletion, and contact details.
+
+The page shares the same navy / gold / cream palette and Caveat headings as Privacy Policy. A sticky header with a back-to-home link and a footer nav (Home · Blog · Privacy Policy · Terms of Service) keep it connected to the site. Four summary cards at the top (🆓 Free Forever · 📝 Your Content · 🤝 Be Respectful · ✉️ Easy to Leave) give returning users a quick-scan overview. A closing navy CTA block with a mailto link invites users to reach out with questions.
+
+On mount the page updates `<title>` to "Terms of Service — Habit Ink", sets the canonical URL to `/terms`, and injects a `BreadcrumbList` JSON-LD schema (Home › Terms of Service) — all restored on unmount.
 
 ---
 
@@ -431,7 +448,7 @@ Habit Ink uses **Supabase Auth** with the Google OAuth provider.
 
 **First-login migration** — if the browser has legacy localStorage data from before the Supabase backend was added, it is silently migrated to the database on first sign-in and the local keys are cleared. Migration is safe: if the database already has data for the user, the local keys are simply cleared and no overwrite happens.
 
-**Public routes** — `/privacy`, `/blog`, `/blog/:slug`, and `/join/:code` render entirely outside `AuthGate`. They have no Supabase queries and work without a session. The `/join/:code` page prompts unauthenticated users to sign in with Google, then redirects them back to the same invite URL after auth.
+**Public routes** — `/privacy`, `/terms`, `/blog`, `/blog/:slug`, and `/join/:code` render entirely outside `AuthGate`. They have no Supabase queries and work without a session. The `/join/:code` page prompts unauthenticated users to sign in with Google, then redirects them back to the same invite URL after auth.
 
 ---
 
@@ -506,12 +523,13 @@ Habit Ink is fully optimised for search engines and installable as a Progressive
 | Title & meta description | Keyword-rich, ≤ 60 / 155 characters, unique per page; blog posts update `<title>` and `<meta name="description">` dynamically on mount |
 | Canonical URL | `<link rel="canonical">` updated per page — `/privacy`, `/blog`, and each `/blog/:slug` update and restore the canonical on mount/unmount |
 | Robots directive | `index, follow, max-image-preview:large, max-snippet:-1` |
-| Sitemap | `/sitemap.xml` — lists `/` (monthly, priority 1.0), `/blog` (weekly, priority 0.9), all 6 blog post URLs (monthly, priority 0.8), and `/privacy` (yearly, priority 0.3) |
+| Sitemap | `/sitemap.xml` — lists `/` (monthly, priority 1.0), `/blog` (weekly, priority 0.9), all 6 blog post URLs (monthly, priority 0.8), `/privacy` (yearly, priority 0.3), and `/terms` (yearly, priority 0.3) |
 | robots.txt | Allows `/`, `/blog`, `/blog/`; disallows all authenticated app routes |
 | Open Graph | Full `og:title`, `og:description`, `og:image` (1200×630 branded PNG), `og:url`, `og:type`, `og:locale`; blog posts update og:title, og:description, and og:url dynamically |
 | Twitter / X Card | `summary_large_image` card; blog posts update `twitter:title` and `twitter:description` dynamically |
 | JSON-LD structured data — homepage | `@graph` with four schemas: `WebSite` (with `SearchAction` / sitelinks search box), `SoftwareApplication` (`featureList`, `offers`, `operatingSystem: "Web Browser"`), `Organization` (with `sameAs` GitHub link), and `FAQPage` (six Q&As matching the visible FAQ section exactly) |
 | JSON-LD structured data — `/privacy` | `BreadcrumbList` (Home › Privacy Policy) injected dynamically, removed on unmount |
+| JSON-LD structured data — `/terms` | `BreadcrumbList` (Home › Terms of Service) injected dynamically, removed on unmount |
 | JSON-LD structured data — `/blog` | `Blog` schema injected dynamically, removed on unmount |
 | JSON-LD structured data — `/blog/:slug` | `BlogPosting` schema (headline, description, datePublished, author, publisher, keywords, articleSection) + `BreadcrumbList` (Home › Blog › [Title]) injected dynamically, removed on unmount |
 | Heading hierarchy | H1 → H2 → H3 with no gaps; section eyebrows are `<p>` elements — each section has a keyword-rich `<h2>` below |
@@ -566,7 +584,9 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 
 **`GroupUnreadContext`** — lightweight global unread counter. A single `totalUnread` integer updated by `GroupContext` whenever group lists are (re)fetched. Used by `TabBar` and `Sidebar` to render the red badge on the Groups navigation item without requiring the full `GroupContext` to be mounted at the top level.
 
-**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) registers four fully public routes before the wildcard: `/privacy` → `PrivacyScreen`, `/blog` → `BlogListScreen`, `/blog/:slug` → `BlogPostScreen`, and `/join/:code` → `GroupProvider` wrapping `JoinGroupScreen`. All four render outside `AuthGate` and the app-level providers — no auth check, no personal Supabase queries. The wildcard `*` falls through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). Both include a nested route `<Route path="/groups" element={<GroupProvider><Outlet /></GroupProvider>}>` with index (`GroupsScreen`) and `:id` (`GroupDetailScreen`) children. The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
+**Routing** uses React Router DOM v6 with three `<Routes>` trees. The outermost tree (in `App.tsx`) registers five fully public routes before the wildcard: `/privacy` → `PrivacyScreen`, `/terms` → `TermsScreen`, `/blog` → `BlogListScreen`, `/blog/:slug` → `BlogPostScreen`, and `/join/:code` → `GroupProvider` wrapping `JoinGroupScreen`. All five render outside `AuthGate` and the app-level providers — no auth check, no personal Supabase queries. The wildcard `*` falls through to `AuthGate → AppLayout`. Inside `AppLayout` there are two further `<Routes>` trees — one for mobile (bottom-bar navigation) and one for desktop (sidebar navigation). Both include a nested route `<Route path="/groups" element={<GroupProvider><Outlet /></GroupProvider>}>` with index (`GroupsScreen`) and `:id` (`GroupDetailScreen`) children. The Today screen accepts an optional `?date=YYYY-MM-DD` query param so journal entries can deep-link to a specific day.
+
+**Onboarding flow** — `OnboardingModal` is a three-step modal rendered by `TodayScreen` on first load. It fires when `dataLoaded` is true, the `habitink_onboarding_done` localStorage key is absent, and the user has zero active (non-archived) habits — i.e., a brand-new account. Step 1 lets users pick any of 6 focus categories (Health, Fitness, Learning, Mindfulness, Productivity, Sleep). Step 2 shows 18 curated habit templates filtered to the selected categories (or all 18 if none are chosen); each template includes emoji, name, tracking type, target, and schedule. Step 3 shows the five themes as swatch + label cards. The modal is skippable at any step. On finish, selected habits are added via `addHabit` and any theme change is applied via `setTheme`; the key is then written to localStorage so the modal never appears again.
 
 **Blog content system** — six blog posts are stored as TypeScript files under `src/blog/posts/`. Each exports a `BlogPost` object (slug, title, description, date, readingTime, category, tags, excerpt, author, content, keywords). `src/blog/index.ts` exports `ALL_POSTS` (sorted newest-first), `getPostBySlug()`, `getRelatedPosts()`, and `ALL_CATEGORIES`. Content is written in a lightweight markdown dialect and rendered by `MarkdownRenderer` — a zero-dependency component that handles h1/h2/h3, `**bold**`, `_italic_`, `[link](url)`, `> blockquote`, unordered lists, ordered lists, and `---` horizontal rules entirely in React without `dangerouslySetInnerHTML`.
 
@@ -641,6 +661,7 @@ Journal-Tracker/
         │   ├── Modal.tsx             Dialog (desktop) / bottom sheet (mobile)
         │   ├── MonthHeatmap.tsx      15-week activity heatmap
         │   ├── OfflineBanner.tsx     Fixed top banner shown when navigator.onLine is false
+        │   ├── OnboardingModal.tsx   3-step first-login wizard (categories → habit templates → theme picker)
         │   ├── TabBar.tsx            Mobile bottom nav (6 tabs, with Groups unread badge) + collapsible sidebar
         │   └── WeeklyChart.tsx       7-day completion bar chart
         ├── constants/
@@ -660,6 +681,7 @@ Journal-Tracker/
         │   ├── dateUtils.ts           toDateKeyInTimezone — timezone-aware YYYY-MM-DD key for challenge check-ins
         │   ├── debounce.ts            Generic typed debounce utility
         │   ├── env.ts                 Validates required env vars at startup; exports typed env object
+        │   ├── exportData.ts          exportSingleCSV — builds and downloads a UTF-8 BOM CSV of all habits + journal data
         │   ├── logger.ts              Centralised logError / logWarn (swappable for Sentry)
         │   ├── supabase.ts            Typed Supabase client singleton
         │   ├── auth/
@@ -673,9 +695,9 @@ Journal-Tracker/
         │   ├── BlogListScreen.tsx     Public blog index (/blog) — featured post + category filter + post grid
         │   ├── BlogPostScreen.tsx     Public blog article (/blog/:slug) — full post with dynamic SEO meta
         │   ├── PrivacyScreen.tsx      Public privacy policy page (accessible without auth)
+        │   ├── TermsScreen.tsx        Public terms of service page (/terms — accessible without auth)
         │   ├── NotFoundScreen.tsx     Full-page themed 404 (shown to logged-in users on unknown routes)
-        │   ├── LoginScreen.tsx        Legacy minimal login page (still present, not shown to users)
-        │   ├── TodayScreen.tsx        Daily tracker + journal
+        │   ├── TodayScreen.tsx        Daily tracker + journal (renders OnboardingModal on first login)
         │   ├── HabitsScreen.tsx       Habit management
         │   ├── CalendarScreen.tsx     Monthly calendar
         │   ├── ProgressScreen.tsx     Stats · charts · insights

@@ -54,6 +54,8 @@ interface SettingsContextValue extends SettingsState {
   reset: () => void;
 }
 
+const SYSTEM_THEME_KEY = "habitink_user_set_theme";
+
 const DEFAULTS: SettingsState = {
   theme: "cream",
   fontStyle: "handwritten",
@@ -96,8 +98,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       .then(({ data, error }) => {
         if (data) {
           const mapped = mapProfileFromDB(data);
+          // Auto-apply system dark mode for users who haven't manually set a theme
+          const userHasSetTheme = !!localStorage.getItem(SYSTEM_THEME_KEY);
+          let resolvedTheme = mapped.theme;
+          if (
+            !userHasSetTheme &&
+            mapped.theme === "cream" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches
+          ) {
+            resolvedTheme = "midnight";
+            supabase.from("profiles").update({ theme: "midnight" }).eq("id", userId!).then(() => {});
+          }
           setSettings({
-            theme: mapped.theme,
+            theme: resolvedTheme,
             fontStyle: mapped.fontStyle,
             fontSize: mapped.fontSize,
             userName: mapped.userName,
@@ -170,6 +183,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback(
     (theme: ThemeName) => {
+      localStorage.setItem(SYSTEM_THEME_KEY, "1");
       setSettings((p) => ({ ...p, theme }));
       updateImmediate({ theme });
     },

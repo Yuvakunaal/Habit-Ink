@@ -1299,6 +1299,7 @@ function DarkClose({ onOpenModal }: { onOpenModal: () => void }) {
           { href: "#faq",            label: "FAQ" },
           { href: "/blog",           label: "Blog" },
           { href: "/privacy",        label: "Privacy" },
+          { href: "/terms",          label: "Terms" },
         ].map(link => (
           <a
             key={link.href}

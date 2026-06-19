@@ -22,6 +22,7 @@ import ProfileScreen from "@/screens/ProfileScreen";
 import SettingsScreen from "@/screens/SettingsScreen";
 import JournalScreen from "@/screens/JournalScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
+import TermsScreen from "@/screens/TermsScreen";
 import BlogListScreen from "@/screens/BlogListScreen";
 import BlogPostScreen from "@/screens/BlogPostScreen";
 import JoinGroupScreen from "@/screens/JoinGroupScreen";
@@ -122,6 +123,7 @@ export function App() {
             <HabitProvider>
               <Routes>
                 <Route path="/privacy"    element={<PrivacyScreen />} />
+                <Route path="/terms"      element={<TermsScreen />} />
                 <Route path="/blog"       element={<BlogListScreen />} />
                 <Route path="/blog/:slug" element={<BlogPostScreen />} />
                 <Route path="/join/:code" element={<GroupProvider><JoinGroupScreen /></GroupProvider>} />

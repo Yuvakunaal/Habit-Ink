@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X, Check, Feather, LogOut, RotateCcw } from "lucide-react";
+import { X, Check, Feather, LogOut, RotateCcw, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { THEMES, ThemeName } from "@/constants/themes";
@@ -9,7 +9,9 @@ import { useColors } from "@/hooks/useColors";
 import { useFont } from "@/hooks/useFont";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useAuth } from "@/context/AuthContext";
+import { useHabits } from "@/context/HabitContext";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { exportSingleCSV } from "@/lib/exportData";
 
 const THEME_ORDER: ThemeName[] = ["cream", "midnight", "forest", "rose", "slate"];
 
@@ -51,6 +53,24 @@ export default function SettingsScreen() {
   } = useSettings();
   const { showToast } = useToast();
   const { user, signOut } = useAuth();
+  const { habits, entries, journals, appStartDate } = useHabits();
+
+  // ── Export state ──────────────────────────────────────────────────────────
+  const [exportState, setExportState] = useState<"idle" | "exporting" | "done">("idle");
+
+  const handleExport = async () => {
+    if (exportState !== "idle") return;
+    setExportState("exporting");
+    try {
+      exportSingleCSV(habits, entries, journals, appStartDate);
+      setExportState("done");
+      showToast("📦 Export ready — check your Downloads", "success");
+      setTimeout(() => setExportState("idle"), 4000);
+    } catch {
+      setExportState("idle");
+      showToast("Export failed — please try again", "success");
+    }
+  };
 
   // ── Inline reset confirm ──────────────────────────────────────────────────
   const [resetConfirming, setResetConfirming] = useState(false);
@@ -286,6 +306,38 @@ export default function SettingsScreen() {
                 A personal notebook for tracking your habits and goals — one day at a time.
               </p>
               <span style={{ ...font.body, fontSize: font.size(12), color: colors.mutedForeground }}>Version 1.0</span>
+            </div>
+          </Section>
+
+          {/* Export Data */}
+          <Section title="Your Data">
+            <div style={{ border: `1px solid ${colors.border}`, borderRadius: 12, overflow: "hidden", backgroundColor: colors.card }}>
+              <div style={{ padding: "14px 16px", borderBottom: `1px solid ${colors.border}` }}>
+                <p style={{ ...font.label, fontSize: font.size(14), color: colors.foreground, margin: "0 0 4px" }}>
+                  Export your data
+                </p>
+                <p style={{ ...font.body, fontSize: font.size(13), color: colors.mutedForeground, margin: 0, lineHeight: 1.5 }}>
+                  One CSV file covering every day since you joined — habits, journal entries, streaks and actual values all in one place. Opens perfectly in Excel or Google Sheets.
+                </p>
+              </div>
+              <button
+                onClick={handleExport}
+                disabled={exportState !== "idle"}
+                style={{
+                  display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center",
+                  gap: 8, width: "100%", padding: "13px 16px", background: "none", border: "none",
+                  cursor: exportState !== "idle" ? "default" : "pointer",
+                  opacity: exportState !== "idle" ? 0.6 : 1,
+                  transition: "opacity 0.15s",
+                }}
+              >
+                <Download size={15} color={exportState === "done" ? colors.success : colors.primary} />
+                <span style={{ ...font.label, fontSize: font.size(15), color: exportState === "done" ? colors.success : colors.primary }}>
+                  {exportState === "idle" && "Download All Data (CSV)"}
+                  {exportState === "exporting" && "Preparing export…"}
+                  {exportState === "done" && "✓ Export downloaded"}
+                </span>
+              </button>
             </div>
           </Section>
 

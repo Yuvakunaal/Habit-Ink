@@ -264,6 +264,7 @@ export default function JournalScreen() {
   const colors = useColors();
   const font = useFont();
   const isWide = useIsWide();
+  const navigate = useNavigate();
   const { journals, getDayNumber, appStartDate } = useHabits();
 
   const todayKey = toDateKey(new Date());
@@ -338,13 +339,45 @@ export default function JournalScreen() {
           padding: isWide ? "28px 28px 80px" : "16px 14px 80px",
         }}>
           {allDays.length === 0 ? (
-            // Never used the app
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 64, gap: 16 }}>
-              <BookOpen size={44} color={colors.border} strokeWidth={1.5} />
-              <p style={{ ...font.heading, fontSize: font.size(22), color: colors.foreground, margin: 0 }}>Your journal awaits</p>
-              <p style={{ ...font.body, fontSize: font.size(14), color: colors.mutedForeground, margin: 0, textAlign: "center", lineHeight: 1.65, maxWidth: 300 }}>
-                Head to Today's screen to write your first intention, notes, or reflection.
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 56, paddingBottom: 40, gap: 0 }}>
+              <span style={{ fontSize: 52, marginBottom: 16 }}>📓</span>
+              <p style={{ ...font.heading, fontSize: font.size(24), color: colors.foreground, margin: "0 0 8px", textAlign: "center" }}>
+                Your story starts here
               </p>
+              <p style={{ ...font.body, fontSize: font.size(15), color: colors.mutedForeground, margin: "0 0 28px", textAlign: "center", lineHeight: 1.65, maxWidth: 300 }}>
+                Every entry you write on Today's screen — intentions, reflections, wins — will appear here as a timeline of your journey.
+              </p>
+              {/* What you can write */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 340, marginBottom: 28 }}>
+                {[
+                  { emoji: "✦", label: "Daily intention", desc: "Set your anchor for the day" },
+                  { emoji: "🏆", label: "Wins",            desc: "Celebrate what went right" },
+                  { emoji: "📝", label: "Reflections",     desc: "Notes, thoughts, and challenges" },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "11px 14px", borderRadius: 12,
+                    border: `1px solid ${colors.border}`, backgroundColor: colors.card,
+                  }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{item.emoji}</span>
+                    <div>
+                      <p style={{ ...font.label, fontSize: font.size(13), color: colors.foreground, margin: "0 0 1px" }}>{item.label}</p>
+                      <p style={{ ...font.body, fontSize: font.size(11), color: colors.mutedForeground, margin: 0 }}>{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => navigate("/")}
+                style={{
+                  ...font.label, fontSize: font.size(15), fontWeight: 600,
+                  color: colors.primaryForeground, backgroundColor: colors.primary,
+                  border: "none", borderRadius: 12,
+                  padding: "13px 32px", cursor: "pointer",
+                }}
+              >
+                Write today's entry →
+              </button>
             </div>
           ) : (
             <>

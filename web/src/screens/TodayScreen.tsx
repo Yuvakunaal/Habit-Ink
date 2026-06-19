@@ -15,6 +15,7 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/context/ToastContext";
 import { Confetti } from "@/components/Confetti";
+import OnboardingModal, { ONBOARDING_KEY } from "@/components/OnboardingModal";
 
 // Survives tab navigation (component remounts) — module-level singleton
 const confettiFiredDates = new Set<string>();
@@ -187,8 +188,17 @@ export default function TodayScreen() {
   const { showToast } = useToast();
   const {
     getHabitsForDate, getEntry, setEntryStatus, setEntryActual,
-    updateJournal, journals, getDayNumber, appStartDate, habits, entries,
+    updateJournal, journals, getDayNumber, appStartDate, habits, entries, dataLoaded,
   } = useHabits();
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const alreadyDone = !!localStorage.getItem(ONBOARDING_KEY);
+    if (!alreadyDone && habits.filter(h => !h.archived).length === 0) {
+      setShowOnboarding(true);
+    }
+  }, [dataLoaded]);
 
   const [currentDate, setCurrentDate] = useState(() => {
     const param = searchParams.get("date");
@@ -366,6 +376,8 @@ export default function TodayScreen() {
     <div className="page-enter" style={{ flex: 1, backgroundColor: colors.background, display: "flex", flexDirection: "column", height: "100%" }}>
       <Confetti active={showConfetti} onDone={() => setShowConfetti(false)} />
 
+      {showOnboarding && <OnboardingModal onDismiss={() => setShowOnboarding(false)} />}
+
       {/* Keyboard shortcuts overlay */}
       {showShortcuts && (
         <div onClick={() => setShowShortcuts(false)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 998, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -501,7 +513,12 @@ export default function TodayScreen() {
               <div style={{ width: 1, backgroundColor: colors.border }} />
               <span style={{ width: DONE_W, fontFamily: font.label.fontFamily, fontWeight: 600, fontSize: 11, color: colors.mutedForeground, letterSpacing: 1, textTransform: "uppercase" as const, padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>Done</span>
               <div style={{ width: 1, backgroundColor: colors.border }} />
-              <span style={{ flex: 2.5, fontFamily: font.label.fontFamily, fontWeight: 600, fontSize: 11, color: colors.mutedForeground, letterSpacing: 1, textTransform: "uppercase" as const, padding: "10px 8px", display: "flex", alignItems: "center", justifyContent: "center" }}>Actual</span>
+              <span
+                title="Log what you actually did — e.g. steps walked, pages read, minutes practiced"
+                style={{ flex: 2.5, fontFamily: font.label.fontFamily, fontWeight: 600, fontSize: 11, color: colors.mutedForeground, letterSpacing: 1, textTransform: "uppercase" as const, padding: "10px 8px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "help", gap: 4 }}
+              >
+                Actual <span style={{ fontSize: 9, opacity: 0.6 }}>ⓘ</span>
+              </span>
             </div>
 
             {orderedHabits.length === 0 ? (

@@ -19,12 +19,12 @@ const HABIT_COLORS = [
   "#6B3A8C","#1A6B6B","#C04A1A","#3A7A8C",
 ];
 
-const HABIT_TYPES: { key: HabitType; label: string; Icon: React.ElementType }[] = [
-  { key: "yesno", label: "Yes / No", Icon: CheckCircle },
-  { key: "number", label: "Number", Icon: Hash },
-  { key: "decimal", label: "Decimal", Icon: Slash },
-  { key: "time", label: "Time", Icon: Clock },
-  { key: "custom", label: "Custom", Icon: Edit3 },
+const HABIT_TYPES: { key: HabitType; label: string; hint: string; Icon: React.ElementType }[] = [
+  { key: "yesno",   label: "Yes / No", hint: "Did you do it?",              Icon: CheckCircle },
+  { key: "number",  label: "Number",   hint: "e.g. steps, pages, glasses",  Icon: Hash },
+  { key: "decimal", label: "Decimal",  hint: "e.g. km run, hours slept",    Icon: Slash },
+  { key: "time",    label: "Time",     hint: "e.g. 7:30am, 25 mins",        Icon: Clock },
+  { key: "custom",  label: "Custom",   hint: "Any text value",              Icon: Edit3 },
 ];
 
 const SCHEDULES: { key: ScheduleType; label: string }[] = [
@@ -258,12 +258,15 @@ function AddModal({ visible, editing, onClose, onDelete, onArchive, onUnarchive 
         {/* Tracking Type */}
         <SectionLabel label="Tracking type" />
         <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-          {HABIT_TYPES.map(({ key, label, Icon }) => {
+          {HABIT_TYPES.map(({ key, label, hint, Icon }) => {
             const active = type === key;
             return (
-              <button key={key} onClick={() => handleTypeChange(key)} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 14, paddingRight: 14, paddingTop: 9, paddingBottom: 9, borderRadius: 22, border: `1.5px solid ${active ? color : colors.border}`, backgroundColor: active ? color : colors.card, cursor: "pointer" }}>
-                <Icon size={13} color={active ? "#fff" : colors.mutedForeground} />
-                <span style={{ ...font.body, fontSize: font.size(13), color: active ? "#fff" : colors.mutedForeground }}>{label}</span>
+              <button key={key} onClick={() => handleTypeChange(key)} title={hint} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, paddingLeft: 14, paddingRight: 14, paddingTop: 10, paddingBottom: 10, borderRadius: 12, border: `1.5px solid ${active ? color : colors.border}`, backgroundColor: active ? color : colors.card, cursor: "pointer" }}>
+                <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Icon size={13} color={active ? "#fff" : colors.mutedForeground} />
+                  <span style={{ ...font.body, fontSize: font.size(13), color: active ? "#fff" : colors.mutedForeground, fontWeight: 600 }}>{label}</span>
+                </div>
+                <span style={{ ...font.body, fontSize: font.size(10), color: active ? "rgba(255,255,255,0.75)" : colors.mutedForeground }}>{hint}</span>
               </button>
             );
           })}

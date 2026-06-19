@@ -713,6 +713,11 @@ export default function GroupDetailScreen() {
   const [scalingReaction, setScalingReaction] = useState<{ entryId: string; emoji: string } | null>(null);
 
   useEffect(() => {
+    if (group) document.title = `${group.name} — Habit Ink`;
+    return () => { document.title = 'Groups — Habit Ink'; };
+  }, [group?.name]);
+
+  useEffect(() => {
     if (!groupId || !user) return;
     const prefix = `nudged_${groupId}_`;
     const set = new Set<string>();
