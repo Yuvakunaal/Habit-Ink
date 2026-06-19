@@ -13,6 +13,10 @@
     <img src="https://img.shields.io/badge/React_Router-6-CA4245?style=flat-square&logo=react-router&logoColor=white" alt="React Router" />
     <img src="https://img.shields.io/badge/version-4.1-8b5cf6?style=flat-square" alt="Version 4.1" />
   </p>
+
+  <p>
+    <strong>Live:</strong> <a href="https://habitink.vercel.app">https://habitink.vercel.app</a>
+  </p>
 </div>
 
 ---
@@ -75,6 +79,7 @@ Most habit trackers are too gamified. Most journals are too freeform. **Habit In
 | 📡 | **Offline banner** | Fixed top bar appears automatically when network is lost |
 | 🛡️ | **Error boundary** | Full-page and compact per-screen error recovery UI |
 | 📝 | **SEO Blog** | Six long-form articles targeting habit-tracking keywords, with per-post schema, canonical, and OG tags |
+| 📊 | **Vercel Analytics** | Page-view analytics via `@vercel/analytics` — zero-config, privacy-friendly, visible in the Vercel dashboard |
 | 👥 | **Groups** | Create or join groups (up to 10 created per user) — invite friends via a shareable link and track habits together |
 | 🏆 | **Group Challenges** | Up to 15 concurrent challenges per group — with join/check-in, per-member streaks, completion rates, and an emoji-reactions feed |
 | 💬 | **Group Chat** | Realtime chat (up to 2,000 chars per message, 100-message sliding window) with optimistic send, date separators, keyword search, emoji reactions with reactor details, and a full categorised emoji picker |
@@ -524,7 +529,7 @@ Habit Ink is fully optimised for search engines and installable as a Progressive
 | Canonical URL | `<link rel="canonical">` updated per page — `/privacy`, `/blog`, and each `/blog/:slug` update and restore the canonical on mount/unmount |
 | Robots directive | `index, follow, max-image-preview:large, max-snippet:-1` |
 | Sitemap | `/sitemap.xml` — lists `/` (monthly, priority 1.0), `/blog` (weekly, priority 0.9), all 6 blog post URLs (monthly, priority 0.8), `/privacy` (yearly, priority 0.3), and `/terms` (yearly, priority 0.3) |
-| robots.txt | Allows `/`, `/blog`, `/blog/`; disallows all authenticated app routes |
+| robots.txt | Allows `/`, `/blog`, `/blog/`; disallows `/habits`, `/journal`, `/calendar`, `/progress`, `/profile`, `/settings`, `/groups`, `/join` |
 | Open Graph | Full `og:title`, `og:description`, `og:image` (1200×630 branded PNG), `og:url`, `og:type`, `og:locale`; blog posts update og:title, og:description, and og:url dynamically |
 | Twitter / X Card | `summary_large_image` card; blog posts update `twitter:title` and `twitter:description` dynamically |
 | JSON-LD structured data — homepage | `@graph` with four schemas: `WebSite` (with `SearchAction` / sitelinks search box), `SoftwareApplication` (`featureList`, `offers`, `operatingSystem: "Web Browser"`), `Organization` (with `sameAs` GitHub link), and `FAQPage` (six Q&As matching the visible FAQ section exactly) |
@@ -617,6 +622,7 @@ No UI framework. No CSS library. Every component is hand-built with React and in
 | [React Router DOM](https://reactrouter.com) | 6 | Client-side routing |
 | [Supabase](https://supabase.com) | 2.108 | Google OAuth auth, Postgres database, Realtime subscriptions, Row Level Security |
 | [Lucide React](https://lucide.dev) | 0.525 | Icon library (used in landing page trust signals and app UI) |
+| [@vercel/analytics](https://vercel.com/docs/analytics) | latest | Privacy-friendly page-view analytics |
 | [Caveat](https://fonts.google.com/specimen/Caveat) | — | Handwritten display font (Google Fonts) |
 | [Inter](https://rsms.me/inter/) | — | Clean body font (Google Fonts) |
 
@@ -635,8 +641,8 @@ Journal-Tracker/
     │   ├── logo.png               Full logo (512×512, used in PWA manifest)
     │   ├── logo-no-bg.png         Transparent logo (used in README header)
     │   ├── og-image.png           OG / Twitter card image (1200×630 branded PNG)
-    │   ├── robots.txt             Allows / and /blog; disallows all authenticated routes
-    │   ├── sitemap.xml            XML sitemap: /, /blog, 6 blog posts, /privacy
+    │   ├── robots.txt             Allows /, /blog, /blog/; disallows /habits, /journal, /calendar, /progress, /profile, /settings, /groups, /join
+    │   ├── sitemap.xml            XML sitemap: /, /blog, 6 blog posts, /privacy, /terms
     │   └── manifest.json          PWA web app manifest
     └── src/
         ├── __tests__/             Unit and integration test files
@@ -707,7 +713,7 @@ Journal-Tracker/
         │   ├── GroupsScreen.tsx       Groups list — create group, view all groups, invite modal (/groups)
         │   ├── GroupDetailScreen.tsx  Group detail — Feed · Challenges · Members · Chat · Settings tabs (/groups/:id)
         │   └── JoinGroupScreen.tsx    Public invite-link page — join flow with rate limiting (/join/:code)
-        ├── App.tsx                    Root layout + routing (4 public routes + AuthGate wildcard)
+        ├── App.tsx                    Root layout + routing (5 public routes + AuthGate wildcard)
         ├── main.tsx                   Entry point
         └── vite-env.d.ts              Vite environment type declarations
     └── vercel.json                Vercel deployment config — SPA rewrite rule + build settings
