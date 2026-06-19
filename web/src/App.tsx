@@ -29,6 +29,7 @@ import BlogPostScreen from "@/screens/BlogPostScreen";
 import JoinGroupScreen from "@/screens/JoinGroupScreen";
 import GroupsScreen from "@/screens/GroupsScreen";
 import GroupDetailScreen from "@/screens/GroupDetailScreen";
+import SitemapScreen from "@/screens/SitemapScreen";
 
 function AppLayout() {
   const colors = useColors();
@@ -125,6 +126,7 @@ export function App() {
               <Routes>
                 <Route path="/privacy"    element={<PrivacyScreen />} />
                 <Route path="/terms"      element={<TermsScreen />} />
+                <Route path="/sitemap"    element={<SitemapScreen />} />
                 <Route path="/blog"       element={<BlogListScreen />} />
                 <Route path="/blog/:slug" element={<BlogPostScreen />} />
                 <Route path="/join/:code" element={<GroupProvider><JoinGroupScreen /></GroupProvider>} />

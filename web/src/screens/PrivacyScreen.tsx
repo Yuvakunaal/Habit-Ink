@@ -399,6 +399,7 @@ export default function PrivacyScreen() {
             { href: "/blog",    label: "Blog" },
             { href: "/privacy", label: "Privacy Policy" },
             { href: "/terms",   label: "Terms of Service" },
+            { href: "/sitemap", label: "Sitemap" },
           ].map(link => (
             <a key={link.href} href={link.href} style={{ ...INTER, fontSize: 12, color: MUTED, textDecoration: "none" }}>
               {link.label}
