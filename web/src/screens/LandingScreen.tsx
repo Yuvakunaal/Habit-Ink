@@ -15,6 +15,72 @@ const BORDER = "#E8E2D9";
 const CAVEAT: React.CSSProperties = { fontFamily: '"Caveat", cursive' };
 const INTER:  React.CSSProperties = { fontFamily: '"Inter", system-ui, sans-serif' };
 
+// ─── WEBVIEW DETECTION ────────────────────────────────────────────────────────
+function detectWebView(): boolean {
+  const ua = navigator.userAgent;
+  if (/Instagram|FBAN|FBAV|Twitter|Line|KAKAOTALK|WhatsApp|Snapchat|TikTok|LinkedIn/i.test(ua)) return true;
+  if (/Android/.test(ua) && /wv/.test(ua)) return true;
+  if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)) return true;
+  return false;
+}
+
+// ─── IN-APP BROWSER BANNER ───────────────────────────────────────────────────
+function InAppBrowserBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  const [copied, setCopied]       = useState(false);
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  if (dismissed) return null;
+
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText("https://habitink.vercel.app"); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      role="alert"
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 3000,
+        backgroundColor: NAVY, padding: "12px 16px",
+        display: "flex", alignItems: "center", gap: 10,
+        boxShadow: "0 2px 12px rgba(0,0,0,0.28)",
+      }}
+    >
+      <span style={{ flex: 1, ...INTER, fontSize: 13, color: "#fff", lineHeight: 1.5 }}>
+        <strong>Google sign-in is blocked in app browsers.</strong>
+        {" "}Tap{" "}
+        <span style={{ fontFamily: "monospace", backgroundColor: "rgba(255,255,255,0.15)", padding: "1px 5px", borderRadius: 4 }}>
+          {isIOS ? "··· → Open in Safari" : "··· → Open in Browser"}
+        </span>
+        {" "}to continue.
+      </span>
+      <button
+        onClick={copyLink}
+        style={{
+          ...INTER, fontSize: 12, fontWeight: 700,
+          backgroundColor: GOLD, color: DARK,
+          border: "none", borderRadius: 8,
+          padding: "6px 12px", cursor: "pointer",
+          flexShrink: 0, whiteSpace: "nowrap",
+        }}
+      >
+        {copied ? "Copied ✓" : "Copy link"}
+      </button>
+      <button
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+        style={{
+          background: "none", border: "none",
+          color: "rgba(255,255,255,0.55)", cursor: "pointer",
+          fontSize: 18, padding: "0 2px", flexShrink: 0, lineHeight: 1,
+        }}
+      >✕</button>
+    </div>
+  );
+}
+
 // ─── HOOKS ────────────────────────────────────────────────────────────────────
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768);
@@ -211,7 +277,16 @@ function GoogleLogo({ size = 18 }: { size?: number }) {
 function GoogleSignInModal({ onClose, onSignIn }: { onClose: () => void; onSignIn: () => Promise<void> }) {
   const [mounted, setMounted]     = useState(false);
   const [signingIn, setSigningIn] = useState(false);
-  const isMobile = useIsMobile();
+  const [copied, setCopied]       = useState(false);
+  const isMobile  = useIsMobile();
+  const inWebView = detectWebView();
+  const isIOS     = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText("https://habitink.vercel.app"); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -284,30 +359,62 @@ function GoogleSignInModal({ onClose, onSignIn }: { onClose: () => void; onSignI
           Sign in with your Google account to start building habits and journaling daily.
         </p>
 
-        <button
-          onClick={handleSignIn}
-          disabled={signingIn}
-          aria-label={signingIn ? "Redirecting to Google sign-in" : "Sign in with Google"}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-            width: "100%", padding: "15px 20px",
-            backgroundColor: signingIn ? "#f8f9fa" : "#fff",
-            border: "1.5px solid #dadce0", borderRadius: 12,
-            cursor: signingIn ? "default" : "pointer",
-            boxShadow: signingIn ? "none" : "0 1px 3px rgba(0,0,0,0.12)",
-            transition: "all 0.2s ease", marginBottom: 28, opacity: signingIn ? 0.75 : 1,
-          }}
-          onMouseEnter={e => { if (!signingIn) (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.14)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; }}
-        >
-          {signingIn
-            ? <div style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${BORDER}`, borderTopColor: NAVY, animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
-            : <GoogleLogo size={20} />
-          }
-          <span style={{ ...INTER, fontSize: 16, fontWeight: 600, color: TEXT }}>
-            {signingIn ? "Redirecting to Google…" : "Continue with Google"}
-          </span>
-        </button>
+        {inWebView ? (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ backgroundColor: "#FFF8E1", border: "1.5px solid #F5C842", borderRadius: 14, padding: "18px 18px 14px", marginBottom: 14, textAlign: "left" }}>
+              <p style={{ ...INTER, fontSize: 13, fontWeight: 700, color: "#7A5A00", margin: "0 0 6px" }}>
+                ⚠️ Google sign-in is blocked here
+              </p>
+              <p style={{ ...INTER, fontSize: 13, color: "#7A5A00", margin: "0 0 10px", lineHeight: 1.55 }}>
+                You're in an in-app browser. Open Habit Ink in{" "}
+                {isIOS ? "Safari" : "Chrome or your default browser"} to sign in.
+              </p>
+              <p style={{ ...INTER, fontSize: 12, color: "#A07800", margin: 0, lineHeight: 1.55 }}>
+                Tap{" "}
+                <strong>{isIOS ? "··· → Open in Safari" : "··· → Open in Browser"}</strong>
+                {" "}at the top of this screen.
+              </p>
+            </div>
+            <button
+              onClick={copyLink}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                width: "100%", padding: "13px 20px",
+                backgroundColor: copied ? "#E8F5EE" : NAVY, color: copied ? GREEN : "#fff",
+                border: "none", borderRadius: 12, cursor: "pointer",
+                ...INTER, fontSize: 15, fontWeight: 600,
+                transition: "all 0.2s ease",
+              }}
+            >
+              {copied ? "✓ Link copied to clipboard" : "Copy Habit Ink link"}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleSignIn}
+            disabled={signingIn}
+            aria-label={signingIn ? "Redirecting to Google sign-in" : "Sign in with Google"}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+              width: "100%", padding: "15px 20px",
+              backgroundColor: signingIn ? "#f8f9fa" : "#fff",
+              border: "1.5px solid #dadce0", borderRadius: 12,
+              cursor: signingIn ? "default" : "pointer",
+              boxShadow: signingIn ? "none" : "0 1px 3px rgba(0,0,0,0.12)",
+              transition: "all 0.2s ease", marginBottom: 28, opacity: signingIn ? 0.75 : 1,
+            }}
+            onMouseEnter={e => { if (!signingIn) (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(0,0,0,0.14)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.12)"; }}
+          >
+            {signingIn
+              ? <div style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${BORDER}`, borderTopColor: NAVY, animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
+              : <GoogleLogo size={20} />
+            }
+            <span style={{ ...INTER, fontSize: 16, fontWeight: 600, color: TEXT }}>
+              {signingIn ? "Redirecting to Google…" : "Continue with Google"}
+            </span>
+          </button>
+        )}
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
           {trust.map((t, i) => (
@@ -1367,6 +1474,7 @@ export default function LandingScreen() {
 
   return (
     <div style={{ backgroundColor: BG }}>
+      {detectWebView() && <InAppBrowserBanner />}
       {modalOpen && <GoogleSignInModal onClose={closeModal} onSignIn={signIn} />}
       <StickyHeader onOpenModal={openModal} />
       <main id="main-content">
