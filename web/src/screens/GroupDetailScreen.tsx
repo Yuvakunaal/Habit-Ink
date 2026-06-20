@@ -2096,13 +2096,6 @@ export default function GroupDetailScreen() {
       )}
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', paddingTop: 10, flexShrink: 0 }}>
         <button
-          onClick={() => { setShowChatSearch(s => !s); if (showChatSearch) setChatSearchQuery(''); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, width: 40, height: 40, flexShrink: 0 }}
-          aria-label="Search messages"
-        >
-          <Search size={18} color={showChatSearch ? colors.primary : colors.mutedForeground} />
-        </button>
-        <button
           onClick={() => setShowEmojiPicker(true)}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
