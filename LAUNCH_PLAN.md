@@ -39,15 +39,14 @@
 
 - Solo founder
 - Very little budget
-- Reddit karma: ~30 (can't post in most large subreddits yet)
 - Can spend time on content
 - Will follow instructions directly
 
 ## Strategy Overview
 
-- **Week 1:** Launch blast across LinkedIn, Hacker News, Twitter, Reddit (low-karma safe)
-- **Week 2:** Content marketing — share blog posts, build Reddit karma through comments, Discord communities
-- **Week 3:** Community infiltration — Reddit (karma built up), Facebook groups, journaling communities
+- **Week 1:** LinkedIn, Twitter, Bluesky, Dev.to
+- **Week 2:** Medium (blog reposts), Quora answers, Pinterest
+- **Week 3:** More Quora, Pinterest batch, LinkedIn + Twitter content
 - **Week 4:** Product Hunt launch (biggest single-day spike) + consolidation
 
 ---
@@ -56,189 +55,117 @@
 
 ---
 
-### DAY 1 — Launch Day
+### DAY 1 — Launch Day ✅ DONE
 
-**Goal:** First 50 signups. Hit warm network first, then cold tech audience.
-
----
-
-#### POST 1 — LinkedIn (publish at 8:30am your time)
-
-**Type:** Text-only post (no image — LinkedIn gives text posts 40% more reach than image posts)
-
-**Exact post:**
-```
-I just launched something I've been building for myself — now it's free for everyone.
-
-I kept two separate apps for years: one to track habits, one to journal. But the check (what I did) and the note (why I did or didn't) belong together. Separating them meant I could see my streaks but never understand the patterns behind them.
-
-So I built Habit Ink.
-
-One web app. No download. Sign in with Google. Done.
-
-Here's what it does:
-→ Track any habit: yes/no, steps, km, pages, hours, or any custom text
-→ Log your daily intention, wins, challenges, and notes alongside your habits
-→ Watch your streak build with milestone celebrations at 7, 14, 30, 60, 100, 365 days
-→ See everything in a calendar heatmap and weekly charts
-→ Create groups with friends — shared challenges, realtime chat, daily nudges, leaderboards
-
-It's completely free. Forever. No subscription. No ads. No paywall. I mean it.
-
-After 30 days of using it myself, the journal entries revealed exactly why I kept breaking the same habits. Not willpower. Patterns. Always the same day of the week. Always the same circumstance.
-
-Try it here → https://habitink.vercel.app
-
-What habit are you trying to build right now? Drop it in the comments 👇
-```
-
-**Engagement tactic:** Reply to every single comment within 1 hour. Ask a follow-up question to each person. This tells LinkedIn the post is performing and boosts reach.
+**LinkedIn** ✅ posted
+**Twitter** ✅ posted
+**HN Show HN** — blocked (new account). Skipped. Will revisit after building karma over time.
 
 ---
 
-#### POST 2 — Hacker News (publish at 9:00am your time)
+### DAY 2 — Developer Community + Bluesky
 
-**Type:** Show HN post
+**Goal:** Reach developers and early adopters who try new tools. Dev.to and Bluesky are both open to new accounts with zero barriers.
+
+---
+
+#### POST 1 — Dev.to (publish at 9am)
+
+Go to dev.to → "Write a Post"
 
 **Title:**
 ```
-Show HN: Habit Ink – Free habit tracker with built-in daily journal (no download)
+What I learned building a PWA habit tracker with Vite + Supabase Realtime
 ```
 
-**URL:** https://habitink.vercel.app
-
-**Post your own first comment immediately after submitting:**
+**Full post:**
 ```
-Hey HN! I built Habit Ink because I was tired of switching between a habit tracker and a separate journal app.
+Hey dev.to! Just launched Habit Ink (habitink.vercel.app) — a free web app combining habit tracking and journaling. Wanted to share a few things that were genuinely tricky to build.
 
-The insight: checking a box tells you what happened. Writing about it tells you why. Put them together on the same screen, on the same day, and after a month you can see the patterns behind your habits — not just the numbers.
-
-Tech stack: Vite + React + TypeScript on the frontend, Supabase for auth and database (PostgreSQL + Realtime), deployed on Vercel. No native app — fully PWA-installable.
-
-What it does:
-- 5 habit types: yes/no, number (integer), decimal, time, custom text
-- Flexible schedules: daily, weekdays, weekends, alternate, or custom days
-- Daily journal: 4 fields (intention, notes, wins/reflections, challenges) with rotating daily prompts
-- Streak milestones at 7/14/30/60/100/200/365 days
-- Calendar heatmap, 15-week GitHub-style heatmap, weekly bar charts, per-habit analytics
-- Groups: realtime chat, shared challenges with leaderboards, nudges, emoji reactions
-- 5 complete themes, 2 font styles, 3 text sizes, CSV data export
-- Keyboard shortcuts on desktop
-
-It's free forever. Passion project, no plans to monetize. Would genuinely love feedback on what's confusing or what's missing.
-```
-
-**HN tip:** Don't re-submit if it doesn't hit the front page. Comment on other Show HN posts that day to get noticed and build goodwill.
+**Stack:** Vite + React + TypeScript, Supabase (Postgres + Auth + Realtime), Vercel. No native app — full PWA with manifest + service worker.
 
 ---
 
-#### POST 3 — Twitter / X (publish at 10:00am your time)
+**1. Supabase Realtime with a 100-message sliding window**
 
-**Type:** Single launch tweet
+For the Groups chat feature, I wanted a fixed window of the last 100 messages. I had to write a Postgres trigger that fires on INSERT and deletes the oldest message when count > 100. The tricky part: the optimistic UI update (message appears instantly) had to gracefully handle the case where the write fails silently — no error thrown, just a row that never appears in the next Realtime update.
 
-**Exact tweet:**
+Solution: I reconcile optimistic state against the Realtime subscription with a 3-second timeout. If the message ID never comes back confirmed via the channel, it gets marked as failed.
+
+---
+
+**2. Debounced auto-save that feels instant**
+
+For journal fields I settled on 800ms debounce. Below 500ms it spammed Supabase writes. Above 1000ms it felt laggy and users would navigate away before the save fired. Critical case: user types in the journal and immediately hits back. I added a `beforeunload` flush that force-commits any pending debounce on unmount.
+
+---
+
+**3. Drag-to-reorder with Realtime subscription on the same table**
+
+Habits can be reordered by drag. Order is persisted to Supabase and also subscribed to via Realtime. Problem: dragging optimistically updates local order, but the Realtime subscription fires with old server state and snaps it back.
+
+Fix: I store a `pendingReorder` ref that pauses Realtime processing of the habits table for 500ms after a drag-commit. Feels instant, no snap-back.
+
+---
+
+**4. Calendar heatmap touch events on mobile**
+
+The 15-week horizontal heatmap needs to scroll left/right without conflicting with the page's vertical scroll. CSS `overflow-x: auto` + `touch-action: pan-x` works but only if the heatmap container doesn't inherit `touch-action: none` from a parent scroll handler. Took longer to debug than I'd like to admit.
+
+---
+
+Happy to go deeper on any of these. App is at habitink.vercel.app — free, sign in with Google. Built this as a passion project, no plans to monetize.
+```
+
+**Dev.to tags:** `webdev`, `javascript`, `typescript`, `react`, `showdev`
+
+---
+
+#### POST 2 — Bluesky (publish at 10am)
+
+Create an account at bsky.app if you don't have one. Bluesky is growing fast — less saturated than Twitter, easier to get seen.
+
+**Post:**
 ```
 Just launched Habit Ink 🖊
 
-A free habit tracker + daily journal in one web app.
-No download. Sign in with Google in one click.
+Free habit tracker + daily journal in one web app. No download. Sign in with Google. Done.
 
-After 30 days of journaling alongside my habits, I could see exactly WHY I kept failing the same ones.
+After 30 days of using it, the journal entries revealed exactly why I kept breaking the same habits. Not willpower. Patterns.
 
 Free forever → habitink.vercel.app
 
-#buildinpublic #indiehacker #productivityapp
+#buildinpublic #indiehacker #productivity
 ```
 
-**Then reply to your own tweet:**
+**Then reply to your own post:**
 ```
 Key features:
 → 5 habit types (yes/no, steps, km, pages, time, custom)
-→ 4-field daily journal (intention, notes, wins, challenges)
+→ 4-field daily journal with rotating prompts
 → Groups with realtime chat + shared challenges
 → Calendar heatmap, streaks, milestones
 → 5 themes, PWA-installable
 → 100% free forever
 ```
 
----
-
-### DAY 2
-
-**Goal:** Reach the builder community. Get first outside-network feedback.
+**Bluesky tip:** Search "habit tracker" and "buildinpublic" on Bluesky and engage with 5-10 posts. The algorithm rewards engagement before broadcasting.
 
 ---
 
-#### POST 1 — Reddit r/SideProject (safe with 30 karma)
+### DAY 3 — Twitter Feature Thread
 
-**Type:** Text post
-
-**Title:**
-```
-I built a free habit tracker with built-in daily journaling — would love honest feedback
-```
-
-**Exact post:**
-```
-Hey r/SideProject!
-
-Just launched Habit Ink (habitink.vercel.app) — a web app that combines habit tracking and daily journaling in one view.
-
-The problem I was solving: I had a habit tracker and a separate journal. But the check (what I did) and the note (why I did or didn't) belong together. Separating them meant I tracked streaks but never understood the patterns behind them.
-
-What it does:
-- Track any habit: yes/no, numeric, decimal, time, or custom text
-- Daily journal with 4 fields (intention, notes, wins, challenges) + rotating daily prompts
-- Streaks with milestones at 7, 14, 30, 60, 100, 365 days
-- Calendar heatmap + weekly charts + per-habit analytics
-- Groups with realtime chat, shared challenges, member leaderboards, nudges
-- 5 themes, PWA-installable, CSV export
-
-Tech: Vite + React + TypeScript + Supabase + Vercel
-
-Completely free. No paywalls, no subscription, no ads. I have no plans to monetize it.
-
-Honest feedback welcome — especially anything that's confusing on first use, or features you'd expect that aren't there.
-```
+**Goal:** Show the full product in a thread. People who saw the Day 1 tweet but didn't click will engage with a walkthrough.
 
 ---
 
-#### POST 2 — Twitter (engage the build-in-public community)
+#### POST 1 — Twitter thread (publish at 9am)
 
-**Type:** Reply tweet + tagging
-
-Search Twitter for #buildinpublic and #indiehacker posts from today. Leave genuine comments on 5-10 other builders' posts. Then post:
-
-```
-Day 2 of launching Habit Ink.
-
-Yesterday: posted on LinkedIn, HN, and Twitter.
-Today: first people from outside my network signed up.
-
-The feedback so far: "I didn't know I wanted a habit tracker and journal in one app until I saw it."
-
-That's the validation I needed.
-
-habitink.vercel.app
-```
-
----
-
-### DAY 3
-
-**Goal:** Show product depth. Convert curious visitors into users.
-
----
-
-#### POST 1 — Twitter Thread (publish at 9am)
-
-**Type:** 8-tweet feature walkthrough thread
-
-**Exact thread:**
+**8-tweet feature walkthrough:**
 
 Tweet 1:
 ```
-I've been using Habit Ink every single day. Here's everything it actually does (🧵 thread):
+I've been using Habit Ink every single day. Here's everything it actually does (🧵):
 ```
 
 Tweet 2:
@@ -260,8 +187,6 @@ Tweet 3:
 • Decimal → 5.2 km run, 7.5 hours sleep
 • Time → wake up at 7:00am, 45 min deep work
 • Custom → which chapter, which workout, what you ate
-
-Every type logs actual vs target.
 ```
 
 Tweet 4:
@@ -273,7 +198,7 @@ The journal has 4 fields every day:
 3. Wins — what went well
 4. Challenges — what held you back
 
-7 rotating prompt sets (one per day of week) so it never feels stale after a month.
+7 rotating prompt sets so it never feels stale after a month.
 ```
 
 Tweet 5:
@@ -292,7 +217,7 @@ Tweet 6:
 ```
 Groups is where it gets interesting.
 
-Create a group → set a shared challenge → compete with friends on a live leaderboard.
+Create a group → set a shared challenge → compete on a live leaderboard.
 
 Real-time chat. Nudge friends who haven't checked in. Cheer those who have.
 Emoji reactions on messages. Full challenge history.
@@ -320,7 +245,7 @@ What habit are you tracking right now? 👇
 
 ---
 
-### DAY 4
+### DAY 4 — LinkedIn Story Post
 
 **Goal:** Hit the productivity/self-improvement audience on LinkedIn with a story, not a product pitch.
 
@@ -330,7 +255,6 @@ What habit are you tracking right now? 👇
 
 **Type:** Insight post. Don't mention the product until the very end.
 
-**Exact post:**
 ```
 I used 6 different habit apps over 3 years. None of them worked.
 
@@ -358,116 +282,108 @@ If you're struggling with the same habits on repeat, the data is already there. 
 
 ---
 
-### DAY 5
+### DAY 5 — Quora Answers (Long Game)
 
-**Goal:** Build Reddit karma. This is unglamorous but essential. Do NOT post anything. Only comment.
-
----
-
-#### KARMA BUILDING — Reddit Comment Strategy
-
-Go to these subreddits and find posts where people are asking for help, advice, or recommendations. Leave genuinely helpful comments — 2 to 4 paragraphs of real value. Do not mention Habit Ink unless directly asked.
-
-**Subreddits to comment in:**
-- r/productivity (find posts like "struggling to build habits", "what habit tracker do you use")
-- r/selfimprovement (find posts about habit struggles, morning routines)
-- r/getdisciplined (find posts asking "how do I stay consistent")
-- r/NoSurf (find posts about digital habits)
-- r/bulletjournal (find posts about habit tracking in bujo)
-
-**Example helpful comment (in a thread like "I can't stick to my habits, what am I doing wrong?"):**
-```
-The most underrated thing: track WHY you missed, not just that you missed. 
-
-Most habit apps only show you what happened (the check or the X). They don't help you record what was going on when you failed — were you tired? stressed? skipped lunch? The pattern that's breaking your habit is almost always there in the context, but if you're not capturing it you'll just see "I missed again" with no signal about what to fix.
-
-The two-minute rule from Atomic Habits is also worth trying — scale your habit down until it's almost impossible to fail. "Read 20 pages" becomes "read 1 page." Once you're in the chair with the book, you'll usually go further anyway. The goal is to make starting trivially easy.
-
-Also: never miss twice. Missing once is an accident. Missing twice is the start of a new (bad) habit. The no-miss-twice rule removes the shame spiral that kills most streaks.
-```
-
-**Target:** Leave 10 genuine comments across these subreddits today. Your karma will increase by 20-50 points depending on upvotes.
+**Goal:** Quora answers rank on Google for years. One good answer to "what's the best free habit tracker app" can drive traffic every week for 3 years. This is the highest-ROI unglamorous task in the whole plan.
 
 ---
 
-### DAY 6
+#### QUORA STRATEGY
 
-**Goal:** Visual content for Instagram and the journaling community.
+Create an account at quora.com. Fill in your profile properly — name, bio ("Indie developer, built Habit Ink"), profile photo. A complete profile gets more upvotes.
+
+**Find these exact questions (search for them):**
+- "What is the best habit tracking app?"
+- "What is the best free habit tracker?"
+- "Is there a habit app that also has journaling?"
+- "What are the best apps to build habits?"
+- "What habit tracker has no subscription?"
+- "Best habit app with no paywall?"
+- "Habit tracker alternatives to Habitica?"
+- "How do I track habits and journal together?"
+
+**Write one detailed answer per question. Do NOT copy-paste the same answer.** Each answer should be genuinely helpful with or without Habit Ink. Mention it at the end with "(Full disclosure: I built this.)"
+
+**Example answer for "What is the best free habit tracker?":**
+```
+The honest answer: most "free" habit trackers are free for 3-5 habits and then hit a paywall. Here's how to evaluate them.
+
+What to look for in a genuinely free tracker:
+1. No habit limit on the free tier
+2. No locked analytics (streaks, charts) behind a subscription
+3. No ads in the daily tracking view
+4. No "reminders require premium" wall
+
+Apps that are worth trying based on these criteria:
+
+**Loop Habit Tracker** (Android only) — open source, genuinely unlimited. No iOS.
+
+**Habitica** — gamified, free, but complex. Works best if you like RPG-style rewards.
+
+**Habit Ink** (habitink.vercel.app) — web app (no download), completely free, no limits. Has a built-in daily journal alongside the tracker, which I haven't seen anywhere else. You check your habits and write about your day in the same screen. Full disclosure: I built this because I couldn't find what I needed.
+
+**Streaks** — iOS only, one-time purchase. Not free but worth mentioning for iOS users.
+
+The one thing I'd add: whatever app you pick, track fewer habits. 3-5 consistent habits beat 15 half-tracked ones every time.
+```
+
+**Target:** Write 5 detailed Quora answers today. These are assets that compound — they'll drive traffic in month 3 when this plan is over.
 
 ---
 
-#### POST 1 — Instagram (publish at 11am)
+### DAY 6 — Pinterest Setup (Evergreen Traffic Engine)
 
-**Type:** Screenshot or screen recording of the Today screen
-
-**Caption:**
-```
-Most habit apps show you what you did. 🗂
-
-Habit Ink shows you why. 📓
-
-→ Track any habit (steps, pages, km, hours, yes/no)
-→ Log your intention, wins, challenges, and notes on the same screen
-→ Build streaks with milestone celebrations
-→ Do challenges with friends in realtime
-
-All free. No download. Sign in with Google.
-
-Link in bio → habitink.vercel.app
-
-#habittracker #dailyjournal #selfimprovement #habitbuilding #productivityapp #streaks #morningroutine #journaling #freeapp #habitink #productivity #selfcare #mindfulness #goalsetting #dailyroutine
-```
+**Goal:** Pinterest drives self-improvement traffic for years, not days. One good pin can get 10,000 impressions over 12 months. Set it up once and it compounds forever.
 
 ---
 
-#### POST 2 — Reddit r/webdev (safe with low karma — builders post here)
+#### PINTEREST SETUP
 
-**Type:** Text post
+Go to Pinterest Business (business.pinterest.com) → Create a free business account.
 
-**Title:**
-```
-Built a PWA habit tracker + journal with Vite + Supabase — sharing what I learned
-```
+**Create these boards:**
+1. "Habit Building Tips"
+2. "Daily Journal Ideas"
+3. "Productivity & Self Improvement"
+4. "Morning Routine Inspiration"
 
-**Exact post:**
-```
-Hey r/webdev, just launched Habit Ink (habitink.vercel.app) and wanted to share some things I learned building it.
+**Create pins for your blog posts** using Canva (free) — vertical image 1000×1500px:
 
-Stack: Vite + React + TypeScript, Supabase (Postgres + Auth + Realtime), Vercel. No native app — fully PWA with a manifest and service worker.
+**Pin 1** → links to `habitink.vercel.app/blog/how-to-build-a-habit`
+- Image text: "How Long Does It Actually Take to Build a Habit?"
+- Description: "Most people quit at 21 days — but that's not even the halfway point. Here's the real research on habit formation. Free habit tracker + journal: habitink.vercel.app"
 
-A few things that were trickier than I expected:
+**Pin 2** → links to `habitink.vercel.app/blog/habit-streak-psychology`
+- Image text: "Missing One Day Doesn't Ruin a Habit. Here's the Science."
+- Description: "The UCL study that changed how I think about habit streaks. Why the shame spiral after missing is more dangerous than the miss itself."
 
-1. Supabase Realtime with a 100-message sliding window — I had to write logic that deletes the oldest message when the 101st is inserted, and handle the optimistic UI case where the message appears instantly but gets rolled back silently if the write fails.
+**Pin 3** → links to `habitink.vercel.app`
+- Image: App screenshot with text overlay: "Free Habit Tracker + Daily Journal. No download needed."
+- Description: "Habit Ink: free web app combining habit tracking and daily journaling. Sign in with Google. Free forever. habitink.vercel.app"
 
-2. Making a debounced auto-save feel instant — I settled on 800ms debounce for journal fields. Below 500ms it spammed writes, above 1000ms it felt laggy. Had to handle the case where the user navigates away mid-debounce and flush the save.
+**Pin 4** → links to `habitink.vercel.app/blog/morning-routine-habits`
+- Image text: "5 Morning Habits Backed by Science"
+- Description: "The research on morning routines — what actually works and why. habitink.vercel.app/blog/morning-routine-habits"
 
-3. Drag to reorder on desktop with persistent ordering — used a ref to track order, wrote it to Supabase on drop, but had to be careful about optimistic updates clashing with Realtime subscriptions on the same table.
-
-4. Calendar heatmap on mobile — the 15-week horizontal scroll had to handle touch events and avoid conflicting with page scroll. Did this with CSS overflow-x: auto and touch-action: pan-x.
-
-Happy to go deeper on any of these if anyone's curious. And if you want to poke at the app itself, it's at habitink.vercel.app — free, sign in with Google.
-```
+**Post these 4 pins today. Add 5 more pins every week (Days 12, 16, 26). Repin from popular boards in your niche to build account authority.**
 
 ---
 
-### DAY 7
+### DAY 7 — Weekly Reflection
 
-**Goal:** Weekly reflection post. Keep momentum. Show you're building in public.
+**Goal:** Keep momentum. Honest "one week in" post performs well everywhere.
 
 ---
 
 #### POST 1 — LinkedIn (publish 8:30am)
 
-**Type:** "One week in" honest reflection
-
-**Exact post:**
 ```
 One week since I launched Habit Ink. Here's what actually happened.
 
 The good:
 → People signed up from 3 different countries (I only expected my LinkedIn network)
 → The most common reaction: "I didn't know I wanted a habit tracker and journal in one app until I saw it"
-→ Hacker News and Reddit gave me the most honest feedback I've ever received
+→ Dev.to and Bluesky gave me the most honest technical feedback
 
 The surprising:
 → The groups feature resonated way more than I expected. Multiple people asked if they could start a group with their friends immediately after signing up
@@ -486,8 +402,6 @@ habitink.vercel.app
 
 #### POST 2 — Twitter
 
-**Type:** Week-in-numbers post
-
 ```
 Week 1 of Habit Ink in numbers:
 
@@ -505,17 +419,14 @@ habitink.vercel.app
 
 ---
 
-### DAY 8
+### DAY 8 — Blog Post on LinkedIn + Twitter
 
-**Goal:** Start sharing blog content. These posts bring SEO traffic AND provide shareable content that doesn't feel promotional.
+**Goal:** Share your blog content on LinkedIn and Twitter. These posts don't feel promotional — they teach something and the product comes at the end naturally.
 
 ---
 
 #### POST 1 — LinkedIn (share blog post)
 
-**Type:** Article teaser with a link to your blog
-
-**Exact post:**
 ```
 21 days is not enough to build a habit.
 
@@ -536,62 +447,48 @@ What habit are you on day [X] of right now?
 
 ---
 
-#### POST 2 — Discord communities
+#### POST 2 — Twitter (same angle, shorter)
 
-**Type:** Personal introduction + share
-
-Find and join these Discord servers:
-- **Productivity & Self-Improvement Discord** (search for "productivity" on disboard.org)
-- **Indie Hackers Discord** 
-- **makers.so**
-- **r/SideProject Discord**
-
-In the #introductions or #share-your-project channel, post:
 ```
-Hey everyone! I'm Kunaal, just launched Habit Ink (habitink.vercel.app) — a free web app that combines habit tracking and daily journaling in one place.
+"It takes 21 days to build a habit" is a myth.
 
-The idea: most habit apps show you what you did, not why. By logging your habits and your daily reflection (intention, wins, challenges) in the same view, patterns emerge after 30 days that you'd never see from checkboxes alone.
+The actual UCL research (96 participants, 2009): average was 66 days. Range was 18–254 depending on the habit.
 
-Free forever, no download, Google sign-in. Would love feedback from this community — what's missing, what's confusing, what would make you actually use it daily?
+You're not failing. You're probably just on day 25.
+
+More: habitink.vercel.app/blog/66-day-habit-challenge
 ```
 
 ---
 
-### DAY 9
+### DAY 9 — Medium (Republish Blog Content)
 
-**Goal:** Hit the journaling community. This is an underserved angle.
-
----
-
-#### POST 1 — Reddit r/Journaling (check if karma is enough — usually needs ~50, you should be there by now)
-
-**Title:**
-```
-I combined my habit tracker and journal into one app — sharing it free
-```
-
-**Exact post:**
-```
-Hey r/Journaling!
-
-I built Habit Ink because I kept switching between a habit tracker app and a separate journal app, and the two were never connected.
-
-The thing that bothered me: the most useful insight about why a habit sticks or breaks is in the journal entry from that day. But if the tracker and the journal are separate, that connection never forms.
-
-Habit Ink puts them on the same screen, the same day. You check your habits at the top, and immediately below is your daily journal with four fields — intention, notes, wins and reflections, and challenges. The prompts rotate daily so it doesn't feel repetitive.
-
-After 30 days of entries, you have both a habit history and a written record of what was happening on every day you succeeded or failed. The patterns become obvious.
-
-It's free, no download, sign in with Google: habitink.vercel.app
-
-For those of you who already journal daily — curious how you currently handle habit tracking alongside it? Do you do it in the same journal or separately?
-```
+**Goal:** Your blog posts are already written — republish on Medium to reach its existing 100M+ reader base. Medium's algorithm surfaces content to readers in the Productivity and Self-Improvement tags for months.
 
 ---
 
-#### POST 2 — Twitter
+#### TASK — Set Up Medium
 
-**Type:** Journaling angle tweet
+Go to medium.com → Create account → Go to Settings → Import a story.
+
+You can either import from URL (paste your blog post URL) or paste the text manually.
+
+**Republish these posts on Medium (one per week):**
+1. Today: `habitink.vercel.app/blog/how-to-build-a-habit`
+2. Day 13: `habitink.vercel.app/blog/habit-streak-psychology`
+3. Day 18: `habitink.vercel.app/blog/morning-routine-habits`
+4. Day 23: `habitink.vercel.app/blog/66-day-habit-challenge`
+
+**For each Medium post:**
+- Add at the very top: *"Originally published at [habitink.vercel.app/blog/...](link)"*
+- At the bottom, add a CTA: *"I built Habit Ink — a free habit tracker + journal web app. No download. [habitink.vercel.app](https://habitink.vercel.app)"*
+- Tags: `Productivity`, `Self Improvement`, `Habit Building`, `Journaling`, `Personal Development`
+
+Medium's canonical URL feature means this won't hurt your SEO — go to "Advanced Settings" → paste your original blog post URL as the canonical.
+
+---
+
+#### POST 1 — Twitter (journaling angle)
 
 ```
 The most useful thing about a habit journal isn't the habit tracking.
@@ -605,57 +502,56 @@ Habit Ink captures both. habitink.vercel.app
 
 ---
 
-### DAY 10
+### DAY 10 — Quora + Pinterest Batch 2
 
-**Goal:** Facebook groups — large untapped audience of self-improvement seekers.
-
----
-
-#### Facebook Group Strategy
-
-Join these groups (request to join if needed, takes 1-2 days for approval):
-- "Habit Building and Tracking" groups (search Facebook)
-- "Self Improvement" groups with 10k+ members
-- "Morning Routine" groups
-- "Bullet Journal" communities
-- "Productivity Tips" groups
-
-**Post to share (adapt tone for each group):**
-```
-I built something I wish had existed when I started trying to build habits — sharing it free because I think some of you will find it useful.
-
-It's called Habit Ink. It's a web app (no download) that combines a habit tracker and a daily journal in one screen.
-
-The idea is simple: most habit apps tell you what you did. The journal tells you why. Put them together and after 30 days you can see exactly which circumstances make your habits succeed or fail.
-
-Features:
-✅ Track any habit (yes/no, numeric, time, custom)
-📓 4-field daily journal with rotating prompts
-🔥 Streaks with milestone celebrations
-📊 Calendar heatmap + weekly progress charts
-👥 Groups for shared challenges and accountability
-🎨 5 themes, works on all devices
-
-100% free. Forever. No subscription. Sign in with Google.
-
-habitink.vercel.app
-
-Has anyone else found that writing about your habits is more useful than just tracking them?
-```
+**Goal:** Double down on the two platforms that keep working long after launch day.
 
 ---
 
-### DAY 11
+#### QUORA (5 more answers)
 
-**Goal:** LinkedIn carousel — highest-engagement format on LinkedIn right now.
+Find and answer these questions:
+- "What is the best free journaling app?"
+- "How do you track habits and journal at the same time?"
+- "Is there an app that combines habit tracking and journaling?"
+- "Why do I keep breaking the same habits?"
+- "What habit tracker has no subscription fee?"
+
+Same approach as Day 5: genuine, helpful answers. Mention Habit Ink once at the end with disclosure.
+
+---
+
+#### PINTEREST (5 new pins)
+
+Create 5 more pins in Canva and post them to your boards:
+
+**Pin 5** → links to `habitink.vercel.app/blog/free-habit-tracker-2026`
+- Image text: "Best Free Habit Trackers in 2026 (Honest Comparison)"
+
+**Pin 6** → links to `habitink.vercel.app/blog/66-day-habit-challenge`
+- Image text: "The 66-Day Habit Rule: What the Science Actually Says"
+
+**Pin 7** → links to `habitink.vercel.app`
+- Image text: "Stop Separating Your Habit Tracker and Journal"
+- Description: "Habit Ink puts them on the same screen, same day. Free. habitink.vercel.app"
+
+**Pin 8** → links to `habitink.vercel.app/blog/habit-journal-vs-tracker`
+- Image text: "Habit Journal vs Habit Tracker: Which One Actually Works?"
+
+**Pin 9** → links to `habitink.vercel.app`
+- Image: App screenshot (Groups feature visible)
+- Description: "Hold yourself accountable with friends. Habit Ink groups: shared challenges, realtime chat, leaderboards. Free forever."
+
+---
+
+### DAY 11 — LinkedIn Insight Post
+
+**Goal:** Insight-style content that performs — no product pitch until the end.
 
 ---
 
 #### POST 1 — LinkedIn (publish 8:30am)
 
-**Type:** Text post formatted as a "carousel" with numbered points — no actual image needed
-
-**Exact post:**
 ```
 5 things I learned after tracking habits daily for 6 months:
 
@@ -681,33 +577,45 @@ Which of these hit closest to home for you?
 
 ---
 
-### DAY 12
+### DAY 12 — LinkedIn + Bluesky
 
-**Goal:** Build Reddit karma with one more comment day. You should be approaching 100 karma.
-
----
-
-#### KARMA BUILDING — Reddit Day 2
-
-Same as Day 5. Target these subreddits with helpful, detailed comments:
-- r/productivity
-- r/getdisciplined  
-- r/selfimprovement
-- r/habittracking (small but perfect audience)
-- r/bulletjournal
-
-Your goal: reach 100 karma by Day 14 so you can post in r/productivity and r/selfimprovement.
-
-Today's angle for comments — look for posts about:
-- "Best habit tracking app?" 
-- "How do you stay consistent?"
-- "Failed at my habit again"
-
-Leave real advice. You can mention Habit Ink briefly at the end with "full disclosure, I built this" if it's relevant.
+**Goal:** Keep the LinkedIn content cadence going. Bluesky for a punchy parallel post.
 
 ---
 
-### DAY 13
+#### POST 1 — LinkedIn (publish 8:30am)
+
+```
+The reason habit apps fail you isn't the app.
+
+It's that the app only records what you did — never what was happening when you didn't.
+
+No habit app can tell you "you always miss on Mondays because your first call drains you."
+
+That's not in the data. It's in the journal entry from that Monday.
+
+That's the whole reason I combined them.
+
+habitink.vercel.app — free habit tracker + journal, one screen.
+```
+
+---
+
+#### POST 2 — Bluesky
+
+```
+Day 12 of building in public with Habit Ink.
+
+The thing nobody tells you about launching a free app: "free forever" is your most powerful marketing sentence.
+
+People are so burned by freemium bait-and-switch that "actually free" hits different.
+
+habitink.vercel.app
+```
+
+---
+
+### DAY 13 — Groups Feature Spotlight
 
 **Goal:** Show the Groups feature. This is an underplayed differentiator.
 
@@ -715,9 +623,6 @@ Leave real advice. You can mention Habit Ink briefly at the end with "full discl
 
 #### POST 1 — LinkedIn (publish 8:30am)
 
-**Type:** Feature spotlight
-
-**Exact post:**
 ```
 The feature I underestimated when I built it: Groups.
 
@@ -743,7 +648,13 @@ Free, no download: habitink.vercel.app
 
 ---
 
-#### POST 2 — Twitter
+#### POST 2 — Medium (publish blog post #2)
+
+Republish `habitink.vercel.app/blog/habit-streak-psychology` on Medium today.
+
+---
+
+#### POST 3 — Twitter
 
 ```
 Hot take: the best habit accountability partner isn't an app notification.
@@ -757,7 +668,7 @@ habitink.vercel.app
 
 ---
 
-### DAY 14
+### DAY 14 — Product Hunt Prep
 
 **Goal:** Two weeks in — set up Product Hunt for launch in one week.
 
@@ -769,7 +680,7 @@ habitink.vercel.app
 
 **Step 2:** Spend 20 minutes upvoting and commenting on 5-10 products that launched today. Build goodwill and familiarity with the platform.
 
-**Step 3:** DM or email 20-30 people you know personally and ask them to upvote on Day 21 (your launch day). Send this message:
+**Step 3:** DM or email 20-30 people you know personally and ask them to upvote on Day 21 (your launch day):
 ```
 Hey [name], I'm launching Habit Ink on Product Hunt on [date]. It's a free habit tracker + journal web app I built. Would mean a lot if you could upvote it on launch day — I'll send you a reminder. Here's the app: habitink.vercel.app
 ```
@@ -811,7 +722,6 @@ Would love feedback on what's confusing on first use or what's missing. Happy to
 
 #### POST 1 — LinkedIn (two-week reflection)
 
-**Exact post:**
 ```
 Two weeks since launching Habit Ink.
 
@@ -832,49 +742,36 @@ habitink.vercel.app
 
 ---
 
-### DAY 15
+### DAY 15 — Quora Campaign Day 2
 
-**Goal:** Hit r/productivity now that karma should be 100+. This is a top-5 subreddit for the audience.
-
----
-
-#### POST 1 — Reddit r/productivity
-
-**Title:**
-```
-After 6 months of using a habit tracker, I realized the data I actually needed was in my journal
-```
-
-**Exact post:**
-```
-I tracked habits for 6 months with a dedicated app. Green days, red days, current streak, best streak. All there.
-
-But I kept breaking the same three habits over and over and I genuinely didn't know why.
-
-Then I started writing one sentence on each day I missed. Just one sentence — what was happening when I didn't do the habit.
-
-After 30 days of that, the pattern was obvious. It was always the same situation: late nights, high-stress Mondays, days I skipped lunch. Same habit, same failure mode, every time.
-
-The tracker showed me what. The journal showed me why. But I had to manually connect dots across two separate apps to get there.
-
-I ended up building a free app that puts both on the same screen — habit tracking at the top, 4-field daily journal directly below. After a month of entries you have the full picture without any dot-connecting. It's called Habit Ink (habitink.vercel.app), and it's completely free.
-
-But even if you don't use it: the one-sentence note on missed days is the most valuable data you can capture. What was happening? What was different that day? That's where the real pattern is.
-
-What's the habit you keep breaking and can never figure out why?
-```
+**Goal:** Write 5 more Quora answers targeting different habit/productivity questions. These rank on Google for years.
 
 ---
 
-### DAY 16
+#### QUORA TARGETS (Day 2)
 
-**Goal:** Morning routine angle — one of the highest-traffic search topics in the space.
+Find these questions on Quora:
+- "How do I journal and track habits at the same time?"
+- "What is the best app for morning routines?"
+- "How do I build a habit that actually sticks?"
+- "What's the difference between a habit tracker and a journal?"
+- "Does journaling help with habit formation?"
+- "Why do I keep failing at habits?"
+
+**Write a genuine, detailed answer for each.** 3-5 paragraphs. Mention Habit Ink once at the end with disclosure. Do NOT make it a sales pitch — make it the best answer to that question. A helpful answer gets upvoted. An upvoted answer gets promoted by Quora's algorithm and ranks on Google.
+
+**Also:** Go back to your Day 5 answers and check if any got upvotes. Reply to comments. Quora boosts answers that have engagement.
+
+---
+
+### DAY 16 — Morning Routine Angle
+
+**Goal:** Morning routine is one of the highest-traffic keyword topics in the self-improvement space.
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 The most effective morning routine has nothing to do with waking up at 5am.
 
@@ -897,45 +794,60 @@ habitink.vercel.app/blog/morning-routine-habits
 
 ---
 
-### DAY 17
+#### POST 2 — Pinterest (3 new pins)
 
-**Goal:** Reddit r/selfimprovement — high karma requirement but now reachable.
-
----
-
-#### POST 1 — Reddit r/selfimprovement
-
-**Title:**
-```
-What actually changed when I started writing one sentence about every habit I missed
-```
-
-**Exact post:**
-```
-I used habit trackers for years. I had green squares and red squares and streaks and badges. What I didn't have: any real understanding of why I kept failing the same habits.
-
-The thing that changed everything was adding one sentence on every day I didn't complete a habit. Not a paragraph. One sentence. "Didn't meditate because I had back-to-back calls until 7pm." "Skipped the run because I was already tired before lunch." "Forgot water because I worked from a different room."
-
-After 30 days I could see the pattern immediately. Every failure had the same 2-3 circumstances behind it. It wasn't motivation or discipline — it was environment and timing.
-
-Once I saw the pattern, fixing it was simple. I moved the habit to a different time. I set a single environmental trigger. I stopped having a rule for the days when the failure condition always occurred.
-
-The journal-on-missed-days practice is now built into my daily tracking. I use Habit Ink for it (I built it, full disclosure) but you can do this in any journal. The key is keeping the note next to the tracking — not in a separate app where you'll never connect the dots.
-
-What habit have you been failing to fix despite tracking it? Happy to think through the pattern with you.
-```
+Add 3 more pins today:
+- Morning routine checklist graphic → links to blog post
+- "5 habits worth tracking every day" infographic → links to app
+- "The journal entry that changes everything" quote graphic → links to blog
 
 ---
 
-### DAY 18
+### DAY 17 — Medium Article #3 + Build-in-Public LinkedIn
 
-**Goal:** Share the most SEO-targeted blog post — "free habit tracker 2026" — this is the big search volume one.
+**Goal:** Keep content engine running. A genuine "what's working" post on LinkedIn performs extremely well — better than any product post.
+
+---
+
+#### POST 1 — LinkedIn Build-in-Public Update (publish 8:30am)
+
+```
+2.5 weeks in. Here's what's actually working to get users for a free app with no budget.
+
+What's working:
+→ LinkedIn text-only story posts: best ROI by far. Outperform every other format 3:1.
+→ Dev.to technical post: picked up by developers who actually tried the app.
+→ Medium reposts: blog posts getting views from Medium's productivity tag audience.
+→ Quora answers: 2 of my 5 answers are getting views. Not traffic yet, but the long game is real.
+
+What's not working (yet):
+→ Pinterest: too early to see results.
+→ Bluesky: small audience for this niche right now, but easy to post and growing.
+→ Bluesky: small audience for this niche, but growing.
+
+Biggest learning so far: "free forever" is a positioning statement, not just a pricing decision. People trust it differently than "free plan." The phrase alone gets shares from people who've never tried the app.
+
+One week until Product Hunt. Prepping.
+
+habitink.vercel.app
+```
+
+---
+
+#### TASK — Medium Post #3
+
+Republish `habitink.vercel.app/blog/morning-routine-habits` on Medium today.
+
+---
+
+### DAY 18 — Free Habit Tracker Blog Post Share
+
+**Goal:** Share the highest-SEO blog post — "free habit tracker 2026" targets real search volume.
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 I looked at every major free habit tracker available in 2026.
 
@@ -957,21 +869,35 @@ habitink.vercel.app/blog/free-habit-tracker-2026
 
 ---
 
-### DAY 19
+#### POST 2 — Bluesky
 
-**Goal:** Community engagement. Respond to everyone, ask for testimonials.
+```
+I compared every major "free" habit app.
+
+Most of them aren't free. They're "free" until they want money for streaks, analytics, or reminders.
+
+Habit Ink is different. No limits. No subscription. No ads. Built for me. Shared for free.
+
+habitink.vercel.app
+```
+
+---
+
+### DAY 19 — Testimonial Collection + Twitter
+
+**Goal:** Collect quotes for Product Hunt launch. Social proof matters enormously on PH.
 
 ---
 
 #### DM CAMPAIGN
 
-Message every person who has commented positively on your LinkedIn, Twitter, or Reddit posts:
+Message every person who has commented positively on your LinkedIn, Twitter, or Bluesky posts:
 
 ```
 Hey [name], thanks so much for the kind words about Habit Ink. I noticed you've been using it — would you be willing to share a quick sentence about what you like most? I'm putting together testimonials for the Product Hunt launch next week. No pressure at all!
 ```
 
-Collect 5-10 quotes. You'll use these on Product Hunt launch day.
+Collect 5-10 quotes. You'll use these on Product Hunt launch day and in a Day 28 LinkedIn post.
 
 ---
 
@@ -991,15 +917,14 @@ habitink.vercel.app
 
 ---
 
-### DAY 20
+### DAY 20 — Product Hunt Eve
 
-**Goal:** Product Hunt eve. Build anticipation.
+**Goal:** Build anticipation. Make people feel like they're part of something.
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 Launching Habit Ink on Product Hunt tomorrow.
 
@@ -1034,7 +959,7 @@ Free habit tracker + daily journal: habitink.vercel.app
 
 #### SEND REMINDER DMs
 
-Message every person you contacted on Day 14 who said they'd upvote. Short message:
+Message every person you contacted on Day 14 who said they'd upvote:
 ```
 Hey [name]! Launching on Product Hunt tomorrow. Here's the link — would mean so much if you upvote tomorrow morning: [Product Hunt link]
 ```
@@ -1081,18 +1006,28 @@ Upvote here: [Product Hunt link]
 #producthunt #buildinpublic
 ```
 
-**Reddit r/SideProject (post at 9am):**
+**Bluesky post (post at 8am):**
 ```
-Title: Habit Ink just launched on Product Hunt — free habit tracker + journal web app
+Habit Ink just went live on Product Hunt! 🚀
 
-We're live! Habit Ink is on Product Hunt today. Free habit tracker + daily journal in one web app, no download needed.
+Free habit tracker + daily journal in one web app. No download. Forever free.
 
-Would love support from this community: [Product Hunt link]
+👉 [Product Hunt link]
 
-And the app: habitink.vercel.app
+Every upvote matters for a solo builder — thank you 🙏
 ```
 
-**Discord servers:** Post the Product Hunt link in every server you joined.
+**Dev.to post (quick update):**
+```
+Habit Ink just went live on Product Hunt today! Free habit tracker + journal web app.
+
+→ Product Hunt: [Product Hunt link]
+→ App: habitink.vercel.app
+
+Would love any support from the dev.to community — upvotes and honest comments both welcome!
+```
+
+**Bluesky:** Post the Product Hunt link with a personal message.
 
 **Personal messages:** Message every person in your contacts who might upvote. Be direct: "I launched on Product Hunt today, would you upvote? Here's the link."
 
@@ -1104,15 +1039,14 @@ Respond to every single comment on your Product Hunt listing within 30 minutes. 
 
 ---
 
-### DAY 22
+### DAY 22 — Post-PH Follow-Up
 
-**Goal:** Post-PH follow-up. Capture the momentum. Convert visitors to regular users.
+**Goal:** Capture the momentum. Convert visitors to regular users.
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 Product Hunt results for Habit Ink: [share what happened honestly]
 
@@ -1127,15 +1061,14 @@ habitink.vercel.app — still free, always will be.
 
 ---
 
-### DAY 23
+### DAY 23 — Streak Psychology Blog Post
 
-**Goal:** The "streak psychology" blog angle — research-backed content that performs on LinkedIn.
+**Goal:** Research-backed content that performs on LinkedIn and Medium.
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 Missing one day does not ruin a habit streak.
 
@@ -1154,128 +1087,60 @@ More on this: habitink.vercel.app/blog/habit-streak-psychology
 
 ---
 
-### DAY 24
+#### TASK — Medium Post #4
 
-**Goal:** Reddit r/habittracking (small but perfectly targeted — your ideal user is here).
-
----
-
-#### POST 1 — Reddit r/habittracking
-
-**Title:**
-```
-Built a free web app that combines habit tracking and daily journaling — sharing for feedback
-```
-
-**Exact post:**
-```
-Hey r/habittracking!
-
-Long-time lurker, first post. I built Habit Ink (habitink.vercel.app) because I was using two separate apps — one for tracking, one for journaling — and they were never connected.
-
-The thing I kept wanting: the ability to see a missed habit day and immediately see what I wrote that day. Was I tired? Traveling? Stressed? The pattern that was breaking my habits was in the journal, but I'd have to manually cross-reference across apps.
-
-Habit Ink puts them on the same screen. Check your habits at the top. Journal (4 fields: intention, notes, wins, challenges) directly below. After 30 days of entries, the patterns are obvious.
-
-Features for the habit-tracking crowd:
-- 5 types: yes/no, number, decimal, time, custom text
-- Schedules: daily, weekdays, weekends, alternate, or custom days
-- Target direction: ≥ or ≤ (for steps/calories/both)
-- Streaks with milestones at 7/14/30/60/100/200/365
-- Calendar heatmap, 15-week horizontal heatmap, per-habit analytics
-- Groups with shared challenges and leaderboards
-- CSV export with all your data
-
-Free forever. No paywalls. Sign in with Google.
-
-Genuinely curious: for people who've tried combining tracking + journaling, what's been the biggest friction point? What do you wish existed?
-```
+Republish `habitink.vercel.app/blog/66-day-habit-challenge` on Medium today.
 
 ---
 
-### DAY 25
+### DAY 24 — Quora Campaign Day 2 + LinkedIn
 
-**Goal:** Instagram Reels or TikTok — highest organic reach right now.
+**Goal:** Second Quora push. By Day 24 your Day 5 answers may have started getting views — check and reply to comments, then add 5 more.
 
 ---
 
-#### VIDEO CONTENT — Instagram Reels / TikTok
+#### QUORA (5 more answers)
 
-**If you're comfortable on camera, record this script (30-60 seconds):**
+- "What is the best habit app for journaling?"
+- "How do you build habits that actually stick long-term?"
+- "Does journaling help you build habits?"
+- "What separates people who stick to habits from people who don't?"
+- "Is there a free habit tracker with no subscription?"
+
+---
+
+#### POST 1 — LinkedIn (publish 8:30am)
 
 ```
-POV: you've failed at the same habits 6 times.
+The habit that changed everything for me wasn't a new routine.
 
-Here's what I was missing.
+It was writing one sentence every time I broke a habit.
 
-I was tracking my habits. Green day, red day, streak broken. But I never knew WHY it kept breaking.
+Not to punish myself. To understand the context.
 
-The data I needed wasn't in the tracker. It was in my journal. But my journal was in a different app.
+"Skipped the run — was still tired from yesterday's late call."
+"Missed meditation — had back-to-back meetings until 7pm."
+"No reading — felt too scattered after dinner."
 
-So I built Habit Ink. One web app where your habit tracking and your daily journal are on the same screen. Same day. You check the habit. You write about it. Right there.
+After 30 days, the same two or three circumstances kept showing up behind every single failure.
 
-After 30 days you can see exactly what circumstances make your habits fail.
+The habit wasn't broken. The environment was.
 
-It's free. No download. Sign in with Google.
+Once I saw it, fixing it was simple.
 
-Link in bio.
-```
-
-**If not comfortable on camera, do a screen recording:**
-- Open the app
-- Show the Today screen with habits + journal visible
-- Scroll slowly
-- Add text overlay: "habit tracker + journal = the combo nobody talks about"
-- Caption: "This is why your streak keeps breaking. And it's free."
-
-**Hashtags:**
-```
-#habittracker #habitjournal #selfimprovement #productivity #morningroutine #streaks #habitbuilding #freepapp #nodownload #habitink #dailyjournal #goalsetting #personalgrowth #selfcare #routine
+habitink.vercel.app — tracks both the habit and the journal entry, same screen.
 ```
 
 ---
 
-### DAY 26
+### DAY 25 — LinkedIn + Dev.to Follow-Up
 
-**Goal:** Engage the journaling community on Reddit — different angle than Day 9.
-
----
-
-#### POST 1 — Reddit r/bulletjournal
-
-**Title:**
-```
-Anyone else track habits AND keep a written journal? Here's what I learned combining them
-```
-
-**Exact post:**
-```
-I've been a bullet journaler for years. Habit trackers (those little grid pages), weekly logs, daily reflections — the whole system.
-
-The insight that changed my practice: my most useful data wasn't the filled circles in the habit grid. It was the daily log entries from the days I didn't fill them.
-
-"Didn't exercise — worked until 9pm."
-"Missed meditation — had calls back to back."
-"No reading — felt too scattered to focus."
-
-Those entries told me more about my habits than months of tracking. But in a bujo they're always separated — the habit grid is one page, the daily log is another. Cross-referencing is manual and I never actually did it.
-
-I ended up building a digital version that puts them together (Habit Ink, free at habitink.vercel.app — full disclosure I built it). But even if you don't use digital tools: the practice of writing one sentence on every day you break a habit, right next to the tracker itself, is worth trying.
-
-For those of you who do both habit tracking and journaling: do you find ways to connect the two, or are they always separate pages/systems?
-```
-
----
-
-### DAY 27
-
-**Goal:** LinkedIn carousel-style post on habit types.
+**Goal:** A "what's actually working" post on LinkedIn at this stage performs very well — you have real data to share now.
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 "What habits are worth tracking?"
 
@@ -1303,15 +1168,78 @@ What's the one habit that would have the biggest impact on your life if you did 
 
 ---
 
-### DAY 28
+### DAY 26 — Quora Campaign Day 3 + Pinterest Push
 
-**Goal:** Testimonial-based content. Social proof is now available from 4 weeks of users.
+**Goal:** Final Quora push and Pinterest content batch for sustained evergreen traffic.
+
+---
+
+#### QUORA (Day 3)
+
+5 more answers targeting:
+- "Is there a habit tracker with journaling?"
+- "What is the best productivity app for 2026?"
+- "How to combine habit tracking and journaling?"
+- "Best app for building a morning routine?"
+- "How do people who journal also track habits?"
+
+---
+
+#### PINTEREST — Batch 3 (5 new pins)
+
+Create and post 5 pins today:
+1. "Why 21 Days Is a Myth (The Real Research)" → blog post
+2. "5 Morning Habits Backed by Science" → blog post
+3. "How to Never Break a Habit Again" → blog post
+4. App screenshot with overlay text → homepage
+5. "The Habit Journal That Changed Everything" → app
+
+---
+
+### DAY 27 — LinkedIn Carousel + Dev.to Follow-Up
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
+```
+"What habits are worth tracking?"
+
+Everyone answers this differently. Here's a framework that's worked for me.
+
+The habits worth tracking are the ones that have:
+→ A clear binary (did you do it or not?) OR a measurable amount
+→ A time when it naturally happens
+→ A visible effect within 30 days
+
+The mistake I made for years: tracking too many habits at once. 3-5 strong habits beat 15 weak ones every time.
+
+What's the one habit that would have the biggest impact on your life if you did it consistently for 90 days?
+
+(All types available in Habit Ink — habitink.vercel.app)
+```
+
+---
+
+#### POST 2 — Dev.to (follow-up post)
+
+**Title:**
+```
+3 weeks of user feedback on my free habit tracker — what I learned
+```
+
+Write a genuine 500-word post about what users said, what you're building next, what surprised you. Dev.to's community loves authentic builder posts.
+
+---
+
+### DAY 28 — Testimonial Post
+
+**Goal:** Social proof is now available from 4 weeks of users.
+
+---
+
+#### POST 1 — LinkedIn
+
 ```
 Some things people have said about Habit Ink after using it:
 
@@ -1330,15 +1258,12 @@ Still free, still growing: habitink.vercel.app
 
 ---
 
-### DAY 29
-
-**Goal:** SEO — share the highest-volume blog post angle.
+### DAY 29 — 66-Day Blog Post Share
 
 ---
 
 #### POST 1 — LinkedIn
 
-**Exact post:**
 ```
 The habit research almost everyone gets wrong.
 
@@ -1358,15 +1283,14 @@ Full breakdown: habitink.vercel.app/blog/66-day-habit-challenge
 
 ---
 
-### DAY 30
+### DAY 30 — One Month Reflection
 
-**Goal:** One month reflection. Honest, human, and forward-looking.
+**Goal:** Most important post of the month. Honest, human, forward-looking.
 
 ---
 
 #### POST 1 — LinkedIn (most important post of the month)
 
-**Exact post:**
 ```
 30 days since I launched Habit Ink. Here's the full honest story.
 
@@ -1417,30 +1341,37 @@ The building continues 🖊
 
 ---
 
-## Summary: Key Rules for This Plan
+#### POST 3 — Dev.to (30-day milestone article)
 
-### Platform Rules
-| Platform | Karma/Requirement | Best Post Time | Post Type |
+Write a genuine "30 days since I launched my free habit tracker" article on Dev.to. Be honest about numbers — the community rewards transparency over polish.
+
+**Title:** `30 days of building in public: what actually drove signups for a free Vite + Supabase app`
+
+Cover: what you launched, the tech stack, what platforms worked (LinkedIn, Dev.to, Medium, Quora, Pinterest), what didn't, how many signups, what you're building next. Include real numbers. This kind of honest post gets picked up and shared widely in the builder community and continues driving traffic for months.
+
+---
+
+## Platform Summary
+
+| Platform | Best Time | Post Type | Traffic Type |
 |---|---|---|---|
-| LinkedIn | None | 8–10am | Text-only or minimal image |
-| Twitter/X | None | 9am–12pm | Tweet threads |
-| Hacker News | None | 9am PST | Show HN with immediate first comment |
-| Reddit r/SideProject | Low (ok with 30) | 9am–12pm | Text post |
-| Reddit r/webdev | Low (ok with 30) | 9am–12pm | Technical text post |
-| Reddit r/Journaling | ~50 karma | 9am–12pm | Community-first text post |
-| Reddit r/productivity | ~100 karma | 9am–12pm | Insight post, not promo |
-| Reddit r/selfimprovement | ~100 karma | 9am–12pm | Personal story post |
-| Instagram | None | 11am–1pm | Visual screenshot or Reel |
-| TikTok | None | 7–9pm | 30-60 sec screen recording |
-| Product Hunt | None | 12:01am PST on launch day | Full listing |
-| Discord servers | None | Anytime | Introduction + share |
-| Facebook groups | Approval needed | 10am–12pm | Community post |
+| LinkedIn | 8–10am | Text-only story posts | Warm network → shares |
+| Twitter/X | 9am–12pm | Threads + short posts | Builder + productivity community |
+| Bluesky | Anytime | Short posts | Growing early adopters |
+| Dev.to | Anytime | Technical "I built X" articles | Developers + long-tail SEO |
+| Medium | Anytime | Republished blog posts | Productivity readers + SEO |
+| Quora | Anytime | Detailed answers to questions | Google search traffic (compounds for years) |
+| Pinterest | Anytime | Visual pins linked to blog posts | Self-improvement evergreen traffic |
+| Product Hunt | 12:01am PST on launch day | Full product listing | Massive one-day spike |
 
-### Cardinal Rules
+---
+
+## Cardinal Rules
+
 1. **Never post and ghost.** Respond to every comment within 1 hour on launch day, within 24 hours every other day.
-2. **Disclose on Reddit.** Always say "I built this" or "full disclosure." Getting caught hiding it will destroy the post.
-3. **Never cross-post the same text.** Each platform gets a unique angle. LinkedIn: insight + product. Reddit: community-first. Twitter: short and punchy.
-4. **Build Reddit karma through comments before posting.** You cannot rush this. Days 5 and 12 are dedicated karma-building days.
+2. **Disclose on Quora.** Always say "I built this" or "full disclosure." Getting caught hiding it destroys the answer permanently.
+3. **Never cross-post the same text.** Each platform gets a unique angle. LinkedIn: insight + product. Quora: genuinely helpful answer with disclosure at the end. Twitter/X: short and punchy. Bluesky: honest builder voice. Medium: long-form republish. Dev.to: technical depth. Pinterest: visual + link.
+4. **Quora and Pinterest are the long game.** They won't drive traffic this week. They'll drive traffic next year. Do them anyway.
 5. **Product Hunt is a single day.** Everything before it builds momentum. Everything after it consolidates it.
 6. **The blog is a long game.** The 6 articles target real search volume. They will bring traffic in 3-6 months. Keep them live and indexed.
 7. **The most important metric in month 1 is return visits, not signups.** If people come back 3 days in a row, you have something.
