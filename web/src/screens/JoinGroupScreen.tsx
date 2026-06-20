@@ -49,11 +49,12 @@ export default function JoinGroupScreen() {
       if (!code) { setState('not_found'); return; }
       setState('loading');
 
-      if (user) {
-        const allowed = await checkRateLimit(user.id);
-        if (!allowed) { setState('rate_limited'); return; }
-        await logAttempt(user.id);
-      }
+      // Auth check first — avoids showing "not found" when RLS blocks unauth reads
+      if (!user) { setState('unauthenticated'); return; }
+
+      const allowed = await checkRateLimit(user.id);
+      if (!allowed) { setState('rate_limited'); return; }
+      await logAttempt(user.id);
 
       const { data: groupData, error } = await supabase
         .from('groups')
@@ -63,8 +64,6 @@ export default function JoinGroupScreen() {
 
       if (error || !groupData) { setState('not_found'); return; }
       setGroup(groupData);
-
-      if (!user) { setState('unauthenticated'); return; }
 
       const { count } = await supabase
         .from('group_members')
@@ -175,15 +174,18 @@ export default function JoinGroupScreen() {
       <div style={containerStyle}>
         <div style={cardStyle}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>🔐</div>
-          <p style={{ ...font.heading, fontSize: 22, color: colors.foreground, margin: '0 0 10px' }}>You've been invited!</p>
+          <p style={{ ...font.heading, fontSize: 22, color: colors.foreground, margin: '0 0 10px' }}>Sign in to join</p>
           <p style={{ ...font.body, fontSize: 14, color: colors.mutedForeground, margin: '0 0 24px', lineHeight: 1.6 }}>
-            You've been invited to join a group on Habit Ink. Sign in to see the details and join.
+            You've been invited to a Habit Ink group. Sign in first and we'll bring you right back to this link.
           </p>
           <button
             onClick={() => signIn({ redirectTo: window.location.href })}
-            style={{ ...font.label, fontSize: 15, backgroundColor: colors.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+            style={{ ...font.label, fontSize: 15, backgroundColor: colors.primary, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 12 }}
           >
             Sign in with Google
+          </button>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', cursor: 'pointer', ...font.body, fontSize: 13, color: colors.mutedForeground }}>
+            Go to Habit Ink instead
           </button>
         </div>
       </div>
