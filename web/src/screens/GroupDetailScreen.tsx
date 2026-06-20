@@ -2115,7 +2115,7 @@ export default function GroupDetailScreen() {
             el.style.height = 'auto';
             el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
           }}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && isDesktop) { e.preventDefault(); handleSendMessage(); } }}
           placeholder="Message..."
           rows={1}
           maxLength={MAX_MESSAGE_LENGTH}
